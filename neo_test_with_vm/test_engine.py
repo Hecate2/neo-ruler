@@ -89,6 +89,8 @@ class TestEngine:
     def param_auto_checker(param: Any) -> Any:
         if type(param) is str and len(param) == 40:
             return types.UInt160.from_string(param).to_array()
+        if type(param) is UInt160:
+            return param.to_array()
         else:
             return param
     
@@ -97,33 +99,8 @@ class TestEngine:
                       engine: ApplicationEngine = None, with_print=False) -> ApplicationEngine:
         if with_print:
             return self.invoke_method_with_print(method, params, signer, scope, engine)
-        if params is None:
-            params = []
-        
-        params = list(map(lambda param: self.param_auto_checker(param), params))
-        if not engine:
-            engine = self.new_engine(self.previous_engine)
-        
-        contract = self.contract
-        # engine.load_script(vm.Script(contract.script))
-        sb = vm.ScriptBuilder()
-        if params:
-            sb.emit_dynamic_call_with_args(contract.hash, method, params)
-        else:
-            sb.emit_dynamic_call(contract.hash, method)
-        engine.load_script(vm.Script(sb.to_array()))
-        
-        if signer:
-            if type(signer) is str and signer != self.NO_SIGNER:
-                signer = types.UInt160.from_string(signer)
-            engine.script_container.signers = [payloads.Signer(signer, scope)]
-        elif self.signer:
-            engine.script_container.signers = [payloads.Signer(self.signer, scope)]
+        return self.invoke_method_of_arbitrary_contract(self.contract.hash, method, params, signer, scope, engine)
 
-        engine.execute()
-        self.previous_engine = engine
-        return engine
-    
     def invoke_method_with_print(self, method: str, params: List = None, signer: Union[str, UInt160] = '',
                                  scope: payloads.WitnessScope = payloads.WitnessScope.CALLED_BY_ENTRY,
                                  engine: ApplicationEngine = None, result_interpreted_as_hex=False,
@@ -135,7 +112,36 @@ class TestEngine:
             print(executed_engine.exception_message)
         self.print_results(executed_engine, result_interpreted_as_hex, result_interpreted_as_iterator)
         return executed_engine
+
+    def invoke_method_of_arbitrary_contract(self, contract_hash: UInt160, method: str, params: List = None, signer: Union[str, UInt160] = '',
+                      scope: payloads.WitnessScope = payloads.WitnessScope.CALLED_BY_ENTRY,
+                      engine: ApplicationEngine = None, with_print=False):
+        if params is None:
+            params = []
+        params = list(map(lambda param: self.param_auto_checker(param), params))
+        if not engine:
+            engine = self.new_engine(self.previous_engine)
     
+        contract = self.contract
+        # engine.load_script(vm.Script(contract.script))
+        sb = vm.ScriptBuilder()
+        if params:
+            sb.emit_dynamic_call_with_args(contract_hash, method, params)
+        else:
+            sb.emit_dynamic_call(contract.hash, method)
+        engine.load_script(vm.Script(sb.to_array()))
+    
+        if signer:
+            if type(signer) is str and signer != self.NO_SIGNER:
+                signer = types.UInt160.from_string(signer)
+            engine.script_container.signers = [payloads.Signer(signer, scope)]
+        elif self.signer:
+            engine.script_container.signers = [payloads.Signer(self.signer, scope)]
+    
+        engine.execute()
+        self.previous_engine = engine
+        return engine
+
     def analyze_results(self, engine: ApplicationEngine = None, result_interpreted_as_hex=False,
                         result_interpreted_as_iterator=False) -> Tuple[vm.VMState, Any]:
         if not engine:

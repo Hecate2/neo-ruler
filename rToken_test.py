@@ -7,10 +7,10 @@ random_hash = '0' * 40
 engine = TestEngine(nef_path, signer=contract_owner_hash)
 engine.invoke_method_with_print('decimals')
 engine.decimals(with_print=True)
-engine.invoke_method_with_print('deploy', params=[contract_owner_hash, b'R_TOKEN_TEST'])
-engine.invoke_method_with_print('deploy', params=[contract_owner_hash, b'R_TOKEN_MULTIPLE_DEPLOY'])
+engine.invoke_method_with_print('deploy', params=[contract_owner_hash, b'R_TOKEN_TEST', 8])
+engine.invoke_method_with_print('deploy', params=[contract_owner_hash, b'R_TOKEN_MULTIPLE_DEPLOY', 8])
 assert engine.previous_engine.state == engine.previous_engine.state.FAULT
-engine.invoke_method_with_print('deploy', params=[random_hash, b'R_TOKEN_RANDOM_USER'])
+engine.invoke_method_with_print('deploy', params=[random_hash, b'R_TOKEN_RANDOM_USER', 8])
 engine.invoke_method_with_print('symbol', result_interpreted_as_hex=True)
 engine.onNEP17Payment_with_print(params=[None,100,b"Transfer from caller to Ruler"])
 engine.invoke_method_with_print("mint", params=[contract_owner_hash, 100])

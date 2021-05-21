@@ -31,13 +31,13 @@ from boa3.builtin.contract import Nep17TransferEvent, abort
 from boa3.builtin.interop.blockchain import get_contract
 from boa3.builtin.interop.contract import NEO, GAS, call_contract, create_contract
 from boa3.builtin.interop.runtime import calling_script_hash, check_witness, get_time, executing_script_hash
-from boa3.builtin.interop.storage import delete, get, put, find, StorageMap, StorageContext
+from boa3.builtin.interop.storage import delete, get, put, find, StorageMap, get_context
 # from boa3.builtin.interop.crypto import sha256
 from boa3.builtin.type import UInt160
 
 """
-RC_TOKEN_NAME_PATTERN = f'RC_{COLLATERAL_RATE}_{MINT_RATIO}_{PARITY_TOKEN}_{EXPIRY_TIMESTAMP}'
-RR_TOKEN_NAME_PATTERN = f'RR_{COLLATERAL_RATE}_{MINT_RATIO}_{PARITY_TOKEN}_{EXPIRY_TIMESTAMP}'
+RC_TOKEN_NAME_PATTERN = f'RC_{COLLATERAL_TOKEN}_{MINT_RATIO}_{PARITY_TOKEN}_{EXPIRY_TIMESTAMP}'
+RR_TOKEN_NAME_PATTERN = f'RR_{COLLATERAL_TOKEN}_{MINT_RATIO}_{PARITY_TOKEN}_{EXPIRY_TIMESTAMP}'
 """
 
 '''
@@ -45,29 +45,30 @@ FILL this with compiled rToken contract nef and manifest.json!
 '''
 # rTokenTemplateNef: bytes = open('rToken.nef', 'rb').read()
 # rTokenTemplateManifest: str = open('rToken.manifest.json', 'r').read()
-rTokenTemplateNef: bytes = b'NEF3neo3-boa by COZ-0.8.1.0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xfd:\x04\x0c%rToken standard inherited from NEP-17@[A\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(\xdb(@\\A\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(\xdb!@ZA\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(\xdb!@W\x00\x01x\xca\x0c\x01\x14\xdb!\xb39xA\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(\xdb!@W\x02\x04x\xca\x0c\x01\x14\xdb!\xb3y\xca\x0c\x01\x14\xdb!\xb3\xab9z\x10\xb89xA\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(\xdb!phz\xb5&\x04\x10@xA9Sn<\x98&\rxA\xf8\'\xec\x8c\xaa&\x04\x10@xy\x98z\x10\xb4\xab&Ghz\xb3&\x0fxA\x9b\xf6g\xceA/X\xc5\xed"\x10hz\x9fxA\x9b\xf6g\xceA\xe6?\x18\x84yA\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(\xdb!qiz\x9eyA\x9b\xf6g\xceA\xe6?\x18\x84zyx\x13\xc0\x0c\x08TransferA\x95\x01oa{zyx4\x04\x11@W\x01\x04y\xd8\xaa&Sy\x11\xc0\x0c\x01\x0f\x0c\x0bgetContract\x0c\x14\xfd\xa3\xfaCF\xeaS*%\x8f\xc4\x97\xdd\xad\xdbd7\xc9\xfd\xffAb}[Rph\xd8\xaa&\x1f{zx\x13\xc0\x1f\x0c\x0eonNEP17PaymentyAb}[RE@W\x03\x02YA\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(pA9Sn<h\x97hA\xf8\'\xec\x8c\xac9y\x10\xb795\x8c\xfe\xff\xffqx5\x9c\xfe\xff\xffriy\x9eZA\x9b\xf6g\xceA\xe6?\x18\x84jy\x9exA\x9b\xf6g\xceA\xe6?\x18\x84yx\x0b\x13\xc0\x0c\x08TransferA\x95\x01oa\x0byx\x0b5:\xff\xff\xff@W\x03\x02y\x10\xb79YA\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(pA9Sn<h\x97hA\xf8\'\xec\x8c\xac9x50\xfe\xff\xffqiy\xb89iy\x9fxA\x9b\xf6g\xceA\xe6?\x18\x845\x01\xfe\xff\xffrjy\x9fZA\x9b\xf6g\xceA\xe6?\x18\x84y\x0bx\x13\xc0\x0c\x08TransferA\x95\x01oa\x0c\x14Burn rToken by Rulery\x0bx5\xaf\xfe\xff\xff@YA\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(A\xf8\'\xec\x8c@W\x00\x02XA\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(\x0c\x00\x97YA\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(\x0c\x00\x97\xab5n\xfd\xff\xff\x10\xb3\xab9\x11XA\x9b\xf6g\xceA\xe6?\x18\x84xYA\x9b\xf6g\xceA\xe6?\x18\x84y[A\x9b\xf6g\xceA\xe6?\x18\x84\x11@W\x00\x03z\x0c\x1dTransfer from caller to Ruler\x98z\x0c\x1dTransfer from Ruler to caller\x98\xab&\x038@V\x05\x0c\x8e\ncan be compiled by neo3-boa==0.8.1\nrTokens are NEP17 tokens, but its token symbol and administrator can be dynamically changed when deployed\nE\x0c\x0cNOT_DEPLOYED`\x0c\x05RULERa\x0c\x0btotalSupplyb\x0c\x0cTOKEN_SYMBOLc\x0c\x0eTOKEN_DECIMALSd@P\xfe=\x90'
-rTokenTemplateManifestPrefix: str = '''{"name":"'''
+rTokenTemplateNef: bytes = b'NEF3neo3-boa by COZ-0.8.1.0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xfdF\x04\x0c%rToken standard inherited from NEP-17@[A\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(\xdb(@\\A\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(\xdb!@ZA\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(\xdb!@W\x00\x01x\xca\x0c\x01\x14\xdb!\xb39xA\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(\xdb!@W\x02\x04x\xca\x0c\x01\x14\xdb!\xb3y\xca\x0c\x01\x14\xdb!\xb3\xab9z\x10\xb89xA\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(\xdb!phz\xb5&\x04\x10@xA9Sn<\x98&\rxA\xf8\'\xec\x8c\xaa&\x04\x10@xy\x98z\x10\xb4\xab&Ghz\xb3&\x0fxA\x9b\xf6g\xceA/X\xc5\xed"\x10hz\x9fxA\x9b\xf6g\xceA\xe6?\x18\x84yA\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(\xdb!qiz\x9eyA\x9b\xf6g\xceA\xe6?\x18\x84zyx\x13\xc0\x0c\x08TransferA\x95\x01oa{zyx4\x04\x11@W\x01\x04y\xd8\xaa&Sy\x11\xc0\x0c\x01\x0f\x0c\x0bgetContract\x0c\x14\xfd\xa3\xfaCF\xeaS*%\x8f\xc4\x97\xdd\xad\xdbd7\xc9\xfd\xffAb}[Rph\xd8\xaa&\x1f{zx\x13\xc0\x1f\x0c\x0eonNEP17PaymentyAb}[RE@W\x03\x02YA\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(pA9Sn<h\x97hA\xf8\'\xec\x8c\xac9y\x10\xb795\x8c\xfe\xff\xffqx5\x9c\xfe\xff\xffriy\x9eZA\x9b\xf6g\xceA\xe6?\x18\x84jy\x9exA\x9b\xf6g\xceA\xe6?\x18\x84yx\x0b\x13\xc0\x0c\x08TransferA\x95\x01oa\x0byx\x0b5:\xff\xff\xff@W\x03\x02y\x10\xb79YA\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(pA9Sn<h\x97hA\xf8\'\xec\x8c\xac9x50\xfe\xff\xffqiy\xb89iy\x9fxA\x9b\xf6g\xceA\xe6?\x18\x845\x01\xfe\xff\xffrjy\x9fZA\x9b\xf6g\xceA\xe6?\x18\x84y\x0bx\x13\xc0\x0c\x08TransferA\x95\x01oa\x0c\x14Burn rToken by Rulery\x0bx5\xaf\xfe\xff\xff@YA\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(A\xf8\'\xec\x8c@W\x00\x03XA\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(\x0c\x00\x97YA\x9b\xf6g\xceA\x92]\xe81J\xd8&\x07E\x0c\x00\xdb(\x0c\x00\x97\xab5n\xfd\xff\xff\x10\xb3\xab9\x11XA\x9b\xf6g\xceA\xe6?\x18\x84xYA\x9b\xf6g\xceA\xe6?\x18\x84y[A\x9b\xf6g\xceA\xe6?\x18\x84z\\A\x9b\xf6g\xceA\xe6?\x18\x84\x11@W\x00\x03z\x0c\x1dTransfer from caller to Ruler\x98z\x0c\x1dTransfer from Ruler to caller\x98\xab&\x038@V\x05\x0c\x8e\ncan be compiled by neo3-boa==0.8.1\nrTokens are NEP17 tokens, but its token symbol and administrator can be dynamically changed when deployed\nE\x0c\x0cNOT_DEPLOYED`\x0c\x05RULERa\x0c\x0btotalSupplyb\x0c\x0cTOKEN_SYMBOLc\x0c\x0eTOKEN_DECIMALSd@\xcc\xa3\n\xde'
+rTokenTemplateManifestPrefix: bytes = b'''{"name":"'''
 # rTokenTemplateManifestPrefix + token_symbol + rTokenTemplateManifestSuffix == rTokenManifest
-rTokenTemplateManifestSuffix: str = ''' ","groups":[],"abi":{"methods":[{"name":"main","offset":0,"parameters":[],"returntype":"String","safe":false},{"name":"symbol","offset":40,"parameters":[],"returntype":"String","safe":false},{"name":"decimals","offset":63,"parameters":[],"returntype":"Integer","safe":false},{"name":"totalSupply","offset":86,"parameters":[],"returntype":"Integer","safe":false},{"name":"balanceOf","offset":109,"parameters":[{"name":"account","type":"Hash160"}],"returntype":"Integer","safe":false},{"name":"transfer","offset":144,"parameters":[{"name":"from_address","type":"Hash160"},{"name":"to_address","type":"Hash160"},{"name":"amount","type":"Integer"},{"name":"data","type":"Any"}],"returntype":"Boolean","safe":false},{"name":"mint","offset":415,"parameters":[{"name":"account","type":"Hash160"},{"name":"amount","type":"Integer"}],"returntype":"Void","safe":false},{"name":"burnByRuler","offset":529,"parameters":[{"name":"account","type":"Hash160"},{"name":"amount","type":"Integer"}],"returntype":"Void","safe":false},{"name":"verify","offset":668,"parameters":[],"returntype":"Boolean","safe":false},{"name":"deploy","offset":694,"parameters":[{"name":"ruler","type":"Hash160"},{"name":"symbol","type":"String"}],"returntype":"Boolean","safe":false},{"name":"onNEP17Payment","offset":791,"parameters":[{"name":"from_address","type":"Hash160"},{"name":"amount","type":"Integer"},{"name":"data","type":"Any"}],"returntype":"Void","safe":false},{"name":"_initialize","offset":865,"parameters":[],"returntype":"Void","safe":false}],"events":[{"name":"Transfer","parameters":[{"name":"from_addr","type":"Any"},{"name":"to_addr","type":"Any"},{"name":"amount","type":"Integer"}]}]},"permissions":[{"contract":"*","methods":"*"}],"trusts":[],"features":[],"supportedstandards":[],"extra":{"Author":"github.com/Hecate2","Email":"chenxinhao@ngd.neo.org","Description":"Ruler token prototype; inherited from NEP-17"}}'''
+rTokenTemplateManifestSuffix: bytes = b''' ","groups":[],"abi":{"methods":[{"name":"main","offset":0,"parameters":[],"returntype":"String","safe":false},{"name":"symbol","offset":40,"parameters":[],"returntype":"String","safe":false},{"name":"decimals","offset":63,"parameters":[],"returntype":"Integer","safe":false},{"name":"totalSupply","offset":86,"parameters":[],"returntype":"Integer","safe":false},{"name":"balanceOf","offset":109,"parameters":[{"name":"account","type":"Hash160"}],"returntype":"Integer","safe":false},{"name":"transfer","offset":144,"parameters":[{"name":"from_address","type":"Hash160"},{"name":"to_address","type":"Hash160"},{"name":"amount","type":"Integer"},{"name":"data","type":"Any"}],"returntype":"Boolean","safe":false},{"name":"mint","offset":415,"parameters":[{"name":"account","type":"Hash160"},{"name":"amount","type":"Integer"}],"returntype":"Void","safe":false},{"name":"burnByRuler","offset":529,"parameters":[{"name":"account","type":"Hash160"},{"name":"amount","type":"Integer"}],"returntype":"Void","safe":false},{"name":"verify","offset":668,"parameters":[],"returntype":"Boolean","safe":false},{"name":"deploy","offset":694,"parameters":[{"name":"ruler","type":"Hash160"},{"name":"symbol","type":"String"},{"name":"decimals","type":"Integer"}],"returntype":"Boolean","safe":false},{"name":"onNEP17Payment","offset":803,"parameters":[{"name":"from_address","type":"Hash160"},{"name":"amount","type":"Integer"},{"name":"data","type":"Any"}],"returntype":"Void","safe":false},{"name":"_initialize","offset":877,"parameters":[],"returntype":"Void","safe":false}],"events":[{"name":"Transfer","parameters":[{"name":"from_addr","type":"Any"},{"name":"to_addr","type":"Any"},{"name":"amount","type":"Integer"}]}]},"permissions":[{"contract":"*","methods":"*"}],"trusts":[],"features":[],"supportedstandards":[],"extra":{"Author":"github.com/Hecate2","Email":"chenxinhao@ngd.neo.org","Description":"Ruler token prototype; inherited from NEP-17"}}'''
 # TODO: run a public contract for users to access standard rToken nef and manifest?
 
+current_storage_context = get_context()
 
 # collaterals: List[UInt160] = []
-collaterals_context = StorageContext()
-collaterals = StorageMap(collaterals_context, 'collaterals')
+collaterals_context = current_storage_context
+collaterals = StorageMap(current_storage_context, 'collaterals')
 # collateral => minimum collateralizing ratio, paired token default to 1e8
 
 # minColRatioMap: Dict[UInt160, int] = {}
-minColRatioMap = StorageMap(StorageContext(), 'minColRatioMap')
+minColRatioMap = StorageMap(current_storage_context, 'minColRatioMap')
 
 # pairs: collateral => pairedToken => expiry => mintRatio => Pair
 # pairs: Dict[UInt160, Dict[UInt160, Dict[int, Dict[int, Dict[str, Any]]]]] ={}
-pairs_map = StorageMap(StorageContext(), 'pairs')
+pairs_map = StorageMap(current_storage_context, 'pairs')
 # get(f'{collateral}{pairedToken}{expiry}{mintRatio}') for the index of a pair
 pair_max_index_key = 'pair_max_index'
 put(pair_max_index_key, 0)
 # pair: Dict[gen_pair_key, Any]; class Pair => attributes
-pair_map = StorageMap(StorageContext(), 'pair')  # store attributes of pairs
+pair_map = StorageMap(current_storage_context, 'pair')  # store attributes of pairs
 
 
 def gen_pair_key(index: int, attribute: str) -> bytearray:
@@ -88,9 +89,9 @@ class Pair:
 '''
 
 # pairList: List[Dict[str, Any]] = []  # List[Pair]
-pairList = StorageMap(StorageContext(), 'pairList')
+pairList = StorageMap(current_storage_context, 'pairList')
 # feesMap: Dict[UInt160, int] = {}
-feesMap = StorageMap(StorageContext(), 'feesMap')
+feesMap = StorageMap(current_storage_context, 'feesMap')
 
 flashLoanRate: int = 0  # TODO: to be determined
 
@@ -333,7 +334,7 @@ class Pair:
 """
 
 
-def _modifyManifestName(_symbol: str) -> str:
+def _modifyManifestName(_symbol: bytes) -> bytes:
     '''
     modify the manifest: add the token symbol field into the manifest.json file
     :param _template_manifest:
@@ -346,18 +347,26 @@ def _modifyManifestName(_symbol: str) -> str:
 
 def _createRToken(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str, _mintRatioStr: str, _prefix: str, _paired_token_decimals: int) -> UInt160:
     # assert _paired_token_decimals >= 0, "RulerCore: paired decimals < 0"
-    col_symbol = cast(str, call_contract(_col, "symbol", []))
-    col_decimals = cast(int, call_contract(_col, "decimals", []))
-    paired_symbol = cast(str, call_contract(_paired, "symbol", []))
-    paired_decimals = cast(int, call_contract(_paired, "decimals", []))
-    symbol = _prefix + col_symbol + '_' + _mintRatioStr + paired_symbol + _expiryStr
-    modified_manifest = _modifyManifestName(symbol).to_bytes()
+    col_symbol = cast(bytes, call_contract(_col, "symbol", []))
+    # col_decimals = cast(int, call_contract(_col, "decimals", []))
+    paired_symbol = cast(bytes, call_contract(_paired, "symbol", []))
+    symbol = bytearray(_prefix.to_bytes()) + \
+             bytearray(col_symbol) + \
+             bytearray(b'_') + \
+             bytearray(_mintRatioStr.to_bytes()) + \
+             bytearray(b'_') + \
+             bytearray(paired_symbol) + \
+             bytearray(b'_') + \
+             bytearray(_expiryStr.to_bytes())
+    modified_manifest = _modifyManifestName(symbol)
     contract = create_contract(rTokenTemplateNef, modified_manifest)
+    paired_decimals = cast(int, call_contract(_paired, "decimals", []))
+    call_contract(contract.hash, 'deploy', [executing_script_hash, symbol, paired_decimals])
     return contract.hash
 
 
 @public
-def addPair(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str, _mintRatio: int, _mintRatioStr: str, _feeRate: int):
+def addPair(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str, _mintRatio: int, _mintRatioStr: str, _feeRate: int) -> int:
     """
     add a new Ruler Pair
     :param _col: collateral token address
@@ -370,13 +379,13 @@ def addPair(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str, _min
     :return: None
     """
     pair = _get_pair(_col, _paired, _expiry, _mintRatio)
-    assert pair != b'', 'Ruler: pair exists'
+    assert pair == b'', 'Ruler: pair exists'
     assert _mintRatio > 0, "Ruler: _mintRatio <= 0"
     assert _feeRate < 100_000_000, "Ruler: fee rate must be < 100%"  # TODO: fee rate
     assert _expiry > get_time, "Ruler: expiry time earlier than current block timestamp"
-    global minColRatioMap
-    assert minColRatioMap.get(_col).to_int() > 0, "Ruler: collateral not listed"
-    minColRatioMap.put(_paired, 100_000_000)
+    # minColRatioMap is related to fees
+    # assert minColRatioMap.get(_col).to_int() > 0, "Ruler: collateral not listed"
+    # minColRatioMap.put(_paired, 100_000_000)
     paired_token_decimals = cast(int, call_contract(_paired, "decimals", []))
     # pair: Dict[str, Any] = {
     #     'active': True,
@@ -388,12 +397,13 @@ def addPair(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str, _min
     #     'rrToken': _createRToken(_col, _paired, _expiry, _expiryStr, _mintRatioStr, "RR_", paired_token_decimals),
     #     'colTotal': 0,
     # }
-    _insert_pair(_col, _paired, _expiry, _mintRatio, True, _feeRate, _mintRatio, _expiry, _paired,
+    pair = _insert_pair(_col, _paired, _expiry, _mintRatio, True, _feeRate, _mintRatio, _expiry, _paired,
                  _createRToken(_col, _paired, _expiry, _expiryStr, _mintRatioStr, "RC_", paired_token_decimals),
                  _createRToken(_col, _paired, _expiry, _expiryStr, _mintRatioStr, "RR_", paired_token_decimals),
                  0)
     # pairList.append(pair)
-    pairList.put(pair, True)
+    pairList.put(pair.to_bytes(), True)
+    return pair
     
     
 # @public

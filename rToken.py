@@ -245,7 +245,7 @@ def verify() -> bool:
 
 
 @public
-def deploy(ruler: UInt160, symbol: str) -> bool:
+def deploy(ruler: UInt160, symbol: str, decimals: int) -> bool:
     """
     Initializes the params when the smart contract is deployed. This method must be executed immediately when deployed
     :param ruler: the address of ruler contract
@@ -260,6 +260,7 @@ def deploy(ruler: UInt160, symbol: str) -> bool:
     put(NOT_DEPLOYED_KEY, 1)
     put(RULER_KEY, ruler)
     put(TOKEN_SYMBOL_KEY, symbol)
+    put(TOKEN_DECIMALS_KEY, decimals)
     return True
 
 
