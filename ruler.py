@@ -439,3 +439,8 @@ def setFlashLoanRate(_newRate: int) -> bool:
 @public
 def getCollaterals() -> Iterator:
     return find(b'', collaterals_context)
+
+@public
+def getPairList(_col: UInt160) -> Iterator:
+    return find(bytearray(b'pairs') + _col)
+    # return pairs_map.find(_col)

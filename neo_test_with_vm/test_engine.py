@@ -73,7 +73,7 @@ class TestEngine:
             partial_function_with_print = partial(self.invoke_method_with_print, method_name)
             setattr(self, method_name_with_print, partial_function_with_print)
     
-    def deploy_more_contracts(self, nef_path: str, manifest_path: str = ''):
+    def deploy_another_contract(self, nef_path: str, manifest_path: str = ''):
         """
         these extra contracts can be called but cannot be tested
         """

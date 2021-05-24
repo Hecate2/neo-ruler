@@ -15,7 +15,7 @@ engine = TestEngine('ruler.nef', signer=contract_owner_hash)
 today = datetime.date.today()
 _30_days_later = today + datetime.timedelta(days=30)
 _30_days_later_ending_milisecond = (int(time.mktime(time.strptime(str(_30_days_later), '%Y-%m-%d'))) * 1000 - 1)
-_30_days_later_date_str = _30_days_later.strftime('%m/%d/%Y')
+_30_days_later_date_str = _30_days_later.strftime('%m_%d_%Y')
 mint_ratio = 7
 fee_rate = 0
 
