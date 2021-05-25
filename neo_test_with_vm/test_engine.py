@@ -44,6 +44,14 @@ class TestEngine:
         manifest = contracts.manifest.ContractManifest.from_json(raw_manifest)
         return nef, manifest
     
+    @property
+    def state(self):
+        return self.previous_engine.state
+    
+    @property
+    def snapshot(self):
+        return self.previous_engine.snapshot
+    
     def __init__(self, nef_path: str, manifest_path: str = '', signer: Union[str, UInt160] = ''):
         """
         Only the contract specified in __init__ can be tested. You can deploy more contracts to be called by the tested
@@ -162,7 +170,6 @@ class TestEngine:
                 processed_result[bytes.fromhex(str(k))] = int.from_bytes(bytes.fromhex(str(v)), 'little')
         else:
             processed_result = str(result)
-        self.previous_engine_state = engine.state
         self.previous_processed_result = processed_result
         return engine.state, processed_result
     
@@ -175,9 +182,9 @@ class TestEngine:
         '''
         reset the blockchain environment, and re-deploy all the contracts that have been deployed.
         '''
-        self.engine = self.new_engine()
+        self.previous_engine = self.new_engine()
         for contract in self.deployed_contracts:
-            self.engine.snapshot.contracts.put(contract)
+            self.previous_engine.snapshot.contracts.put(contract)
             
     def __repr__(self):
-        return f'class TestEngine: {self.previous_engine_state} {self.previous_processed_result}'
+        return f'class TestEngine: {self.state} {self.previous_processed_result}'
