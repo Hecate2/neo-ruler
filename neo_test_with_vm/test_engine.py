@@ -182,7 +182,7 @@ class TestEngine:
             processed_result = bytes.fromhex(str(result))
         elif result and result_interpreted_as_iterator:
             processed_result = dict()
-            iterator = list(engine.result_stack.peek().get_object().it)
+            iterator = list(result.get_object().it)
             for k,v in iterator:
                 processed_result[k.key] = v.value
         else:

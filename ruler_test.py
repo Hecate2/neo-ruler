@@ -27,6 +27,7 @@ engine.invoke_method_with_print("getCollaterals", result_interpreted_as_iterator
 a_collateral = list(engine.previous_processed_result.keys())[0][len('collaterals'):]
 engine.invoke_method_with_print("getPairsMap", params=[UInt160.deserialize_from_bytes(a_collateral)], result_interpreted_as_iterator=True)
 assert b'pairs' + a_collateral in list(engine.previous_processed_result.keys())[0]
+engine.invoke_method_with_print('getPairAttributes', params=[list(engine.previous_processed_result.values())[0]], result_interpreted_as_iterator=True)
 # The following codes require wallet support from neo-mamba
 engine.invoke_method_of_arbitrary_contract(neo.hash, 'balanceOf', [contract_owner_hash])
 print('invoke method balanceOf me:'); engine.print_results()

@@ -453,3 +453,7 @@ def getCollaterals() -> Iterator:
 @public
 def getPairsMap(_col: UInt160) -> Iterator:
     return find(bytearray(b'pairs') + _col, current_storage_context)
+
+@public
+def getPairAttributes(_pair: int) -> Iterator:
+    return find(bytearray(b'pair_') + bytearray(_pair.to_bytes()) + SEPARATOR)
