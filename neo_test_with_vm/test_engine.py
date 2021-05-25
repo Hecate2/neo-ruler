@@ -5,6 +5,8 @@ from typing import List, Union, Tuple, Any, cast
 
 from neo3 import vm, contracts, blockchain
 from neo3.contracts import ApplicationEngine
+from neo3.contracts.native import FungibleToken
+from neo3.contracts import NeoToken, GasToken
 from neo3.core import types
 from neo3.core.types import UInt160
 from neo3.network import payloads
@@ -115,7 +117,7 @@ class TestEngine:
 
     def invoke_method_of_arbitrary_contract(self, contract_hash: UInt160, method: str, params: List = None, signer: Union[str, UInt160] = '',
                       scope: payloads.WitnessScope = payloads.WitnessScope.CALLED_BY_ENTRY,
-                      engine: ApplicationEngine = None, with_print=False):
+                      engine: ApplicationEngine = None):
         if params is None:
             params = []
         params = list(map(lambda param: self.param_auto_checker(param), params))
@@ -176,6 +178,6 @@ class TestEngine:
         self.engine = self.new_engine()
         for contract in self.deployed_contracts:
             self.engine.snapshot.contracts.put(contract)
-    
+            
     def __repr__(self):
         return f'class TestEngine: {self.previous_engine_state} {self.previous_processed_result}'

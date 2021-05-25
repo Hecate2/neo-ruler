@@ -66,7 +66,7 @@ minColRatioMap = StorageMap(current_storage_context, 'minColRatioMap')
 pairs_map = StorageMap(current_storage_context, 'pairs')
 # get(f'{collateral}{pairedToken}{expiry}{mintRatio}') for the index of a pair
 pair_max_index_key = 'pair_max_index'
-put(pair_max_index_key, 0)
+put(pair_max_index_key, 1)
 # pair: Dict[gen_pair_key, Any]; class Pair => attributes
 pair_map = StorageMap(current_storage_context, 'pair')  # store attributes of pairs
 

@@ -1,3 +1,7 @@
+#### Intro
+
+`ruler.py` allows everyone to borrow paired token by paying a sum of collateral token. In `ruler.py`, the administrator of ruler.py is expected to call `addPair` at first to allow other users to call `deposit` and `repay` to borrow paired tokens and pay back. `ruler` does not directly give paired token, but only rrTokens and rcTokens. rcTokens are expected to be sold on the market for paired token, and represents the right to claim paired token after the loan expires (by calling `collect` in `ruler.py` after expiry), and rrToken is a representation of debt. rc and rr tokens are created and managed by deploying multiple `rToken.py` contracts dynamically by `ruler.py`.
+
 #### Objects / Concepts
 
 - collateral token: 被抵押的币
@@ -24,7 +28,7 @@
   - part of collaterals are paid to rcToken holders
   - Ruler protocol offers **FUNGIBLE** loan
     - A `Pair` is utilized by many borrowers. The pool of defaulted paired token is considered as a whole.
-    - Any loan expired with any defaulted paired token caused by any user leads to rcToken holders receive some collaterals. 
+    - Any loan expired with any defaulted paired token caused by any borrower leads to all the rcToken holders receiving some collaterals. 
 
 #### Major APIs of solidity implementation
 
@@ -59,9 +63,9 @@
 
 function viewCollectible  // How much I am eligible to collect
 
-function getCollaterals
+function getCollaterals  // Which types of collaterals are available to be paid to borrow paired tokens
 
-function getPairList(address _col)
+function getPairList(address _col)  // detailed pair information using this type of collateral
 
 ##### Management APIs
 
@@ -79,7 +83,7 @@ function setPairActive
 
 function setFeeReceiver
 
-function setPaused
+function setPaused  // pause new deposits
 
 function setOracle
 
@@ -89,15 +93,15 @@ function flashFee
 
 #### Tests
 
-- Test of token contract `rToken.py`
+- Test of token contract `rToken.py`: almost OK
 - `Pair` CR(U?)(D?); `collaterals` CR(U?)(D?)
 - `deposit` unit test
 - `repay` unit test
 - `collect` unit test
 
-The Python SDK does not support wallet for testing. RPC-based tests on private chains are being implemented
-
 #### Difficulties
+
+Currently the Python SDK `neo-mamba` does not support wallet for testing. Meanwhile, RPC-based tests on private chains do not support relaying transactions to the block chain, so any execution of contract does not take effect on the blockchain.
 
 no float support; no arithmetic division `/` support for now
 
@@ -105,7 +109,7 @@ no contract inheritance in Python
 
 no support for returning multiple values
 
-Automated tests: difficult be implemented in Python
+Automated tests: difficult to be implemented in Python
 
 - Cannot use wallet with Python SDK
 - Cannot relay transaction to blockchain with RPC'
