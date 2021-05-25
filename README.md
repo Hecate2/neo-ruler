@@ -1,13 +1,31 @@
 #### Intro
 
-`ruler.py` allows everyone to borrow paired token by paying a sum of collateral token. In `ruler.py`, the administrator of ruler.py is expected to call `addPair` at first to allow other users to call `deposit` and `repay` to borrow paired tokens and pay back. `ruler` does not directly give paired token, but only rrTokens and rcTokens. rcTokens are expected to be sold on the market for paired token, and represents the right to claim paired token after the loan expires (by calling `collect` in `ruler.py` after expiry), and rrToken is a representation of debt. rc and rr tokens are created and managed by deploying multiple `rToken.py` contracts dynamically by `ruler.py`.
+`ruler.py` allows everyone to borrow paired token by paying a sum of collateral token. 
+
+In `ruler.py`, the administrator of ruler.py is expected to call `addPair` at first to allow other users to call `deposit` and `repay` to borrow paired tokens and pay back. 
+
+`ruler` does not directly give paired token to the borrower, but only an equivalent amount of Ruler Capital Token (rcTokens) and another equivalent amount of Ruler Repayment Tokens (rrTokens). 
+
+rcTokens are **expected to be sold on the market** for paired token, and represent the right to claim paired token after the loan expires (by calling `collect` in `ruler.py` after expiry). Usually the price of an rcToken sold on the market is lower than 1 paired token, because rcToken holders can only collect the paired token after a period of time (after expiry). The interest rate of the loan is simply determined by this market-driven price of rcToken.
+
+rrToken is a representation of debt, indicating that the holder must pay back paired token before expiry. rc and rr tokens are created and managed by deploying multiple `rToken.py` contracts dynamically by `ruler.py`. 
+
+The following figure shows the 4 steps of a loan operated by ruler and the market. 
+
+![4 steps of ruler protocol operations](intro.png)
+
+- **Defaulted loans**
+  - part of collaterals are paid to rcToken holders when part of paired tokens go defaulted
+  - Ruler protocol offers **FUNGIBLE** loan
+    - A `Pair` is utilized by many borrowers. The pool of defaulted paired token is considered as a whole.
+    - Any loan expired with any defaulted paired token caused by any borrower leads to all the rcToken holders receiving some collaterals. 
 
 #### Objects / Concepts
 
 - collateral token: 被抵押的币
 - paired token: 被偿还的币
 - expiry: a date before which the paired tokens are expected to be paid back
-- **mint ratio**: 1 collateral token for how many paired tokens
+- **mint ratio**: 1 collateral token for how many rTokens (related to collateral ratio)
 - **rcToken**: a representation of creditor's right; right to claim paired token . Users do not directly get paired token, but only rTokens from the ruler. rTokens are **publicly sold** on the market for paired token. Market-driven interest. 
 - **rrToken**: a representation of debt liability; obligation to pay back paired token
 - (I give the ruler 1 paired token; the ruler returns me *mint_ratio* rcTokens and *mint_ratio* rrTokens)
@@ -16,7 +34,8 @@
   - paired token
   - expiry
   - **mint ratio**
-  - Representation: ticker symbol: `RC_{Collateral}_{Mint Ratio}_{Paired Token}_{Expiry}`
+  - Representation: symbol of rTokens:
+    - ticker symbol: `RC_{Collateral}_{Mint Ratio}_{Paired Token}_{Expiry}`
     - e.g. `RC_wBTC_10000_Dai_12_31_2021`
 
 #### Management
@@ -24,11 +43,6 @@
 - Pairs:
   - All the `Pair` objects and attributes of `Pair` are managed by administrator.
   - Borrowers should specify all the attributes of an existing `Pair` to borrow from that pair contract. 
-- Defaulted loans
-  - part of collaterals are paid to rcToken holders
-  - Ruler protocol offers **FUNGIBLE** loan
-    - A `Pair` is utilized by many borrowers. The pool of defaulted paired token is considered as a whole.
-    - Any loan expired with any defaulted paired token caused by any borrower leads to all the rcToken holders receiving some collaterals. 
 
 #### Major APIs of solidity implementation
 
@@ -39,7 +53,7 @@
 | /// deposit collateral to a Ruler Pair, sender receives rcTokens and rrTokens |
 | ------------------------------------------------------------ |
 | function deposit                                             |
-| address _col,<br/>    address _paired,<br/>    uint48 _expiry,<br/>    uint256 _mintRatio,<br/>    uint256 _colAmt |
+| address _col,<br/>address _paired,<br/>uint48 _expiry,<br/>uint256 _mintRatio,<br/>uint256 _colAmt |
 
 | /// repay with rrTokens and paired token amount, sender receives collateral, no fees charged on collateral |
 | ------------------------------------------------------------ |
@@ -71,7 +85,7 @@ function getPairList(address _col)  // detailed pair information using this type
 
 | function addPair                                             |
 | ------------------------------------------------------------ |
-| address _col,<br/>    address _paired,<br/>    uint48 _expiry,<br/>    string calldata _expiryStr,<br/>    uint256 _mintRatio,<br/>    string calldata _mintRatioStr,<br/>    uint256 _feeRate |
+| address _col,<br/>address _paired,<br/>uint48 _expiry,<br/>string calldata _expiryStr,<br/>uint256 _mintRatio,<br/>string calldata _mintRatioStr,<br/>uint256 _feeRate |
 
 **function _createRToken**  // deploy new contracts of rcToken and rrToken
 
