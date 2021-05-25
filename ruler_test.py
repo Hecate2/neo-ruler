@@ -10,7 +10,7 @@ neo, gas = NeoToken(), GasToken()
 nef_path = 'rToken.nef'
 contract_owner_hash = "6d629e44cceaf8722c99a41d5fb98cf3472c286a"
 random_hash = '0' * 40
-engine = TestEngine('ruler.nef', signer=contract_owner_hash)
+engine = TestEngine('ruler.nef', signers=[contract_owner_hash])
 
 today = datetime.date.today()
 _30_days_later = today + datetime.timedelta(days=30)
@@ -23,7 +23,7 @@ engine.invoke_method_with_print("addPair", params=[neo.hash, gas.hash, _30_days_
 assert engine.previous_engine.state == VMState.HALT \
     and engine.previous_engine.result_stack.peek() == IntegerStackItem(1)
 # The following codes require wallet support from neo-mamba
-engine.invoke_method_of_arbitrary_contract(neo.hash, 'transfer', [neo.hash, contract_owner_hash, 100, b'data'], signer=neo.hash)
+engine.invoke_method_of_arbitrary_contract(neo.hash, 'transfer', [neo.hash, contract_owner_hash, 100, b'data'], signers=[neo.hash])
 engine.print_results()
 engine.invoke_method_with_print("deposit", params=[neo.hash, gas.hash, _30_days_later_ending_milisecond, mint_ratio, 1])
 print()

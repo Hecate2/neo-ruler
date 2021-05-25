@@ -4,7 +4,7 @@ from neo_test_with_vm import TestEngine
 nef_path = 'rToken.nef'
 contract_owner_hash = "6d629e44cceaf8722c99a41d5fb98cf3472c286a"
 random_hash = '0' * 40
-engine = TestEngine(nef_path, signer=contract_owner_hash)
+engine = TestEngine(nef_path, signers=[contract_owner_hash])
 engine.invoke_method_with_print('decimals')
 engine.decimals(with_print=True)
 engine.invoke_method_with_print('deploy', params=[contract_owner_hash, b'R_TOKEN_TEST', 8])

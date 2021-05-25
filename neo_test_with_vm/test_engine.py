@@ -52,7 +52,8 @@ class TestEngine:
     def snapshot(self):
         return self.previous_engine.snapshot
     
-    def __init__(self, nef_path: str, manifest_path: str = '', signer: Union[str, UInt160] = ''):
+    def __init__(self, nef_path: str, manifest_path: str = '', signers: List[Union[str, UInt160]] = None,
+                 scope: payloads.WitnessScope = payloads.WitnessScope.CALLED_BY_ENTRY):
         """
         Only the contract specified in __init__ can be tested. You can deploy more contracts to be called by the tested
         contract.
@@ -65,12 +66,13 @@ class TestEngine:
         self.next_contract_id = 1  # if you deploy more contracts in a same engine, the contracts must have different id
         self.previous_engine.snapshot.contracts.put(self.contract)
         self.deployed_contracts = [self.contract]
-        if signer:
-            if type(signer) is str:
-                signer = types.UInt160.from_string(signer)
-            self.signer = signer
+        if signers:
+            signers = list(map(lambda signer:
+                               self.signer_auto_checker(signer, scope),
+                               signers))
+            self.signers = signers
         else:
-            self.signer = UInt160()
+            self.signers = [UInt160()]
 
         # add methods to this class for users to call contract methods
         for method in self.manifest.abi.methods:
@@ -97,33 +99,47 @@ class TestEngine:
     
     @staticmethod
     def param_auto_checker(param: Any) -> Any:
-        if type(param) is str and len(param) == 40:
+        type_param = type(param)
+        if type_param is str and len(param) == 40:
             return types.UInt160.from_string(param).to_array()
-        if type(param) is UInt160:
+        if type_param is UInt160:
             return param.to_array()
         else:
             return param
     
-    def invoke_method(self, method: str, params: List = None, signer: Union[str, UInt160] = '',
+    @staticmethod
+    def signer_auto_checker(signer: Union[str, UInt160], scope: payloads.WitnessScope) -> payloads.Signer:
+        type_signer = type(signer)
+        if type_signer is str and len(signer) == 40:
+            return payloads.Signer(types.UInt160.from_string(signer), scope)
+        elif type_signer is UInt160:
+            return payloads.Signer(signer, scope)
+        else:
+            raise ValueError(f'Unable to handle signer {signer} with type {type_signer}')
+    
+    def invoke_method(self, method: str, params: List = None, signers: List[Union[str, UInt160]] = None,
                       scope: payloads.WitnessScope = payloads.WitnessScope.CALLED_BY_ENTRY,
                       engine: ApplicationEngine = None, with_print=False) -> ApplicationEngine:
         if with_print:
-            return self.invoke_method_with_print(method, params, signer, scope, engine)
-        return self.invoke_method_of_arbitrary_contract(self.contract.hash, method, params, signer, scope, engine)
+            return self.invoke_method_with_print(method, params, signers, scope, engine)
+        return self.invoke_method_of_arbitrary_contract(self.contract.hash, method, params, signers, scope, engine)
 
-    def invoke_method_with_print(self, method: str, params: List = None, signer: Union[str, UInt160] = '',
+    def invoke_method_with_print(self, method: str, params: List = None, signers: List[Union[str, UInt160]] = None,
                                  scope: payloads.WitnessScope = payloads.WitnessScope.CALLED_BY_ENTRY,
                                  engine: ApplicationEngine = None, result_interpreted_as_hex=False,
                                  result_interpreted_as_iterator=False) -> ApplicationEngine:
+        if not signers:
+            signers = []
         print(f'invoke method {method}:')
-        executed_engine = self.invoke_method(method, params, signer, scope, engine)
+        executed_engine = self.invoke_method(method, params, signers, scope, engine)
         if executed_engine.state == executed_engine.state.FAULT:
             print(f'engine fault from method "{method}":')
             print(executed_engine.exception_message)
         self.print_results(executed_engine, result_interpreted_as_hex, result_interpreted_as_iterator)
         return executed_engine
 
-    def invoke_method_of_arbitrary_contract(self, contract_hash: UInt160, method: str, params: List = None, signer: Union[str, UInt160] = '',
+    def invoke_method_of_arbitrary_contract(self, contract_hash: UInt160, method: str, params: List = None,
+                      signers: List[Union[str, UInt160]] = None,
                       scope: payloads.WitnessScope = payloads.WitnessScope.CALLED_BY_ENTRY,
                       engine: ApplicationEngine = None):
         if params is None:
@@ -141,12 +157,13 @@ class TestEngine:
             sb.emit_dynamic_call(contract.hash, method)
         engine.load_script(vm.Script(sb.to_array()))
     
-        if signer:
-            if type(signer) is str and signer != self.NO_SIGNER:
-                signer = types.UInt160.from_string(signer)
-            engine.script_container.signers = [payloads.Signer(signer, scope)]
-        elif self.signer:
-            engine.script_container.signers = [payloads.Signer(self.signer, scope)]
+        if signers and signers != self.NO_SIGNER:
+            signers = list(map(lambda signer:
+                               self.signer_auto_checker(signer, scope),
+                               signers))
+            engine.script_container.signers = signers
+        elif self.signers:  # use signers stored in self when no external signer specified
+            engine.script_container.signers = self.signers
     
         engine.execute()
         self.previous_engine = engine
