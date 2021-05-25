@@ -61,7 +61,7 @@ collaterals = StorageMap(current_storage_context, b'collaterals')
 minColRatioMap = StorageMap(current_storage_context, 'minColRatioMap')
 
 # pairs: collateral => pairedToken => expiry => mintRatio => Pair
-# pairs: Dict[UInt160, Dict[UInt160, Dict[int, Dict[int, Dict[str, Any]]]]] ={}
+# pairs: Dict[UInt160, Dict[UInt160, Dict[int, Dict[int, Dict[str, Any]]]]] = {}
 pairs_map = StorageMap(current_storage_context, b'pairs')
 # get(f'{collateral}{pairedToken}{expiry}{mintRatio}') for the index of a pair
 pair_max_index_key = b'pair_max_index'
@@ -69,9 +69,11 @@ put(pair_max_index_key, 1)
 # pair: Dict[gen_pair_key, Any]; class Pair => attributes
 pair_map = StorageMap(current_storage_context, b'pair_')  # store attributes of pairs
 
+SEPARATOR = bytearray(b'_')
+
 
 def gen_pair_key(index: int, attribute: str) -> bytearray:
-    return bytearray(index.to_bytes()) + bytearray(attribute.to_bytes())
+    return bytearray(index.to_bytes()) + SEPARATOR + bytearray(attribute.to_bytes())
 
 
 '''
@@ -88,7 +90,7 @@ class Pair:
 '''
 
 # pairList: List[Dict[str, Any]] = []  # List[Pair]
-pairList = StorageMap(current_storage_context, 'pairList')
+# pairList = StorageMap(current_storage_context, 'pairList')
 # feesMap: Dict[UInt160, int] = {}
 feesMap = StorageMap(current_storage_context, 'feesMap')
 
@@ -137,7 +139,8 @@ def _get_pair(_col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int) ->
     :type _mintRatio: object
     """
     # pair = pairs[_col][_paired][_expiry][_mintRatio]
-    key = _col + _paired + bytearray(_expiry.to_bytes()) + bytearray(_mintRatio.to_bytes())
+    key = _col + SEPARATOR + _paired + SEPARATOR + bytearray(_expiry.to_bytes())\
+          + SEPARATOR + bytearray(_mintRatio.to_bytes())
     pair = pairs_map.get(key)
     return pair  # int or b''
 
@@ -192,7 +195,7 @@ def deposit(_col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _col
     _validateDepositInputs(pair)
     # Before taking collateral from message sender,
     # get the balance of collateral of this contract
-    call_contract(_col, "transfer", [calling_script_hash, executing_script_hash, _colAmt, "Transfer from caller to Ruler"])
+    assert call_contract(_col, "transfer", [calling_script_hash, executing_script_hash, _colAmt, "Transfer from caller to Ruler"]), "Failed to transfer collateral from caller to ruler."
     colTotal_key = gen_pair_key(pair, "colTotal")
     pair_map.put(colTotal_key, pair_map.get(colTotal_key).to_int() + _colAmt)
     mintAmount = _getRTokenAmtFromColAmt(_colAmt, _col, _paired, _mintRatio)
@@ -344,18 +347,18 @@ def _modifyManifestName(_symbol: bytes) -> bytes:
     return rTokenTemplateManifestPrefix + _symbol + rTokenTemplateManifestSuffix
 
 
-def _createRToken(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str, _mintRatioStr: str, _prefix: str, _paired_token_decimals: int) -> UInt160:
+def _createRToken(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str, _mintRatioStr: str, _prefix: bytes, _paired_token_decimals: int) -> UInt160:
     # assert _paired_token_decimals >= 0, "RulerCore: paired decimals < 0"
     col_symbol = cast(bytes, call_contract(_col, "symbol", []))
     # col_decimals = cast(int, call_contract(_col, "decimals", []))
     paired_symbol = cast(bytes, call_contract(_paired, "symbol", []))
-    symbol = bytearray(_prefix.to_bytes()) + \
+    symbol = bytearray(_prefix) + \
              bytearray(col_symbol) + \
-             bytearray(b'_') + \
+             SEPARATOR + \
              bytearray(_mintRatioStr.to_bytes()) + \
-             bytearray(b'_') + \
+             SEPARATOR + \
              bytearray(paired_symbol) + \
-             bytearray(b'_') + \
+             SEPARATOR + \
              bytearray(_expiryStr.to_bytes())
     modified_manifest = _modifyManifestName(symbol)
     contract = create_contract(rTokenTemplateNef, modified_manifest)
@@ -397,11 +400,13 @@ def addPair(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str, _min
     #     'colTotal': 0,
     # }
     pair = _insert_pair(_col, _paired, _expiry, _mintRatio, True, _feeRate, _mintRatio, _expiry, _paired,
-                 _createRToken(_col, _paired, _expiry, _expiryStr, _mintRatioStr, "RC_", paired_token_decimals),
-                 _createRToken(_col, _paired, _expiry, _expiryStr, _mintRatioStr, "RR_", paired_token_decimals),
+                 _createRToken(_col, _paired, _expiry, _expiryStr, _mintRatioStr, bytearray(b"RC") + SEPARATOR, paired_token_decimals),
+                 _createRToken(_col, _paired, _expiry, _expiryStr, _mintRatioStr, bytearray(b"RR") + SEPARATOR, paired_token_decimals),
                  0)
+    pairs_map.put(_col + SEPARATOR + _paired + SEPARATOR + bytearray(_expiry.to_bytes()) +
+                  SEPARATOR + bytearray(_mintRatio.to_bytes()), pair)
     # pairList.append(pair)
-    pairList.put(_col + bytearray(b'_') + _paired, True)
+    # pairList.put(_col + SEPARATOR + _paired, True)
     collaterals.put(_col, True)
     return pair
     
@@ -440,7 +445,11 @@ def setFlashLoanRate(_newRate: int) -> bool:
 def getCollaterals() -> Iterator:
     return find(b'collaterals', current_storage_context)
 
+# @public
+# def getPairList(_col: UInt160) -> Iterator:
+#     return find(bytearray(b'pairList') + _col, current_storage_context)
+#     # return pairList.find(_col)
+
 @public
-def getPairList(_col: UInt160) -> Iterator:
-    return find(bytearray(b'pairList') + _col, current_storage_context)
-    # return pairList.find(_col)
+def getPairsMap(_col: UInt160) -> Iterator:
+    return find(bytearray(b'pairs') + _col, current_storage_context)
