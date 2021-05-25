@@ -5,8 +5,6 @@ from typing import List, Union, Tuple, Any, cast
 
 from neo3 import vm, contracts, blockchain
 from neo3.contracts import ApplicationEngine
-from neo3.contracts.native import FungibleToken
-from neo3.contracts import NeoToken, GasToken
 from neo3.core import types
 from neo3.core.types import UInt160
 from neo3.network import payloads
@@ -51,6 +49,10 @@ class TestEngine:
     @property
     def snapshot(self):
         return self.previous_engine.snapshot
+    
+    @property
+    def result_stack(self):
+        return self.previous_engine.result_stack
     
     def __init__(self, nef_path: str, manifest_path: str = '', signers: List[Union[str, UInt160]] = None,
                  scope: payloads.WitnessScope = payloads.WitnessScope.CALLED_BY_ENTRY):
@@ -179,12 +181,10 @@ class TestEngine:
         if result and result_interpreted_as_hex:
             processed_result = bytes.fromhex(str(result))
         elif result and result_interpreted_as_iterator:
-            cast(vm.MapStackItem, result)
-            keys = result.keys()
-            values = result.values()
-            processed_result = {}
-            for k, v in zip(keys, values):
-                processed_result[bytes.fromhex(str(k))] = int.from_bytes(bytes.fromhex(str(v)), 'little')
+            processed_result = dict()
+            iterator = list(engine.result_stack.peek().get_object().it)
+            for k,v in iterator:
+                processed_result[k.key] = v.value
         else:
             processed_result = str(result)
         self.previous_processed_result = processed_result

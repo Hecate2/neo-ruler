@@ -20,10 +20,14 @@ mint_ratio = 7
 fee_rate = 0
 
 engine.invoke_method_with_print("addPair", params=[neo.hash, gas.hash, _30_days_later_ending_milisecond, _30_days_later_date_str, mint_ratio, str(mint_ratio), fee_rate])
-assert engine.previous_engine.state == VMState.HALT \
-    and engine.previous_engine.result_stack.peek() == IntegerStackItem(1)
+assert engine.state == VMState.HALT and engine.result_stack.peek() == IntegerStackItem(1)
+engine.invoke_method_with_print("getCollaterals", result_interpreted_as_iterator=True)
+a_collateral = list(engine.previous_processed_result.keys())[0][len('collaterals'):]
+engine.invoke_method_with_print("getPairList", params=[UInt160.deserialize_from_bytes(a_collateral)], result_interpreted_as_iterator=True)
+assert b'pairList' + a_collateral +b'_' in list(engine.previous_processed_result.keys())[0]
 # The following codes require wallet support from neo-mamba
 engine.invoke_method_of_arbitrary_contract(neo.hash, 'transfer', [neo.hash, contract_owner_hash, 100, b'data'], signers=[neo.hash])
+print('invoke method transfer:')
 engine.print_results()
 engine.invoke_method_with_print("deposit", params=[neo.hash, gas.hash, _30_days_later_ending_milisecond, mint_ratio, 1])
 print()

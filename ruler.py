@@ -54,8 +54,7 @@ rTokenTemplateManifestSuffix: bytes = b''' ","groups":[],"abi":{"methods":[{"nam
 current_storage_context = get_context()
 
 # collaterals: List[UInt160] = []
-collaterals_context = current_storage_context
-collaterals = StorageMap(current_storage_context, 'collaterals')
+collaterals = StorageMap(current_storage_context, b'collaterals')
 # collateral => minimum collateralizing ratio, paired token default to 1e8
 
 # minColRatioMap: Dict[UInt160, int] = {}
@@ -63,12 +62,12 @@ minColRatioMap = StorageMap(current_storage_context, 'minColRatioMap')
 
 # pairs: collateral => pairedToken => expiry => mintRatio => Pair
 # pairs: Dict[UInt160, Dict[UInt160, Dict[int, Dict[int, Dict[str, Any]]]]] ={}
-pairs_map = StorageMap(current_storage_context, 'pairs')
+pairs_map = StorageMap(current_storage_context, b'pairs')
 # get(f'{collateral}{pairedToken}{expiry}{mintRatio}') for the index of a pair
-pair_max_index_key = 'pair_max_index'
+pair_max_index_key = b'pair_max_index'
 put(pair_max_index_key, 1)
 # pair: Dict[gen_pair_key, Any]; class Pair => attributes
-pair_map = StorageMap(current_storage_context, 'pair')  # store attributes of pairs
+pair_map = StorageMap(current_storage_context, b'pair_')  # store attributes of pairs
 
 
 def gen_pair_key(index: int, attribute: str) -> bytearray:
@@ -402,7 +401,8 @@ def addPair(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str, _min
                  _createRToken(_col, _paired, _expiry, _expiryStr, _mintRatioStr, "RR_", paired_token_decimals),
                  0)
     # pairList.append(pair)
-    pairList.put(pair.to_bytes(), True)
+    pairList.put(_col + bytearray(b'_') + _paired, True)
+    collaterals.put(_col, True)
     return pair
     
     
@@ -438,9 +438,9 @@ def setFlashLoanRate(_newRate: int) -> bool:
 """
 @public
 def getCollaterals() -> Iterator:
-    return find(b'', collaterals_context)
+    return find(b'collaterals', current_storage_context)
 
 @public
 def getPairList(_col: UInt160) -> Iterator:
-    return find(bytearray(b'pairs') + _col)
-    # return pairs_map.find(_col)
+    return find(bytearray(b'pairList') + _col, current_storage_context)
+    # return pairList.find(_col)
