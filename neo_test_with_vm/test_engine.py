@@ -168,6 +168,7 @@ class TestEngine:
             engine.script_container.signers = self.signers
     
         engine.execute()
+        engine.snapshot.commit()
         self.previous_engine = engine
         return engine
 
