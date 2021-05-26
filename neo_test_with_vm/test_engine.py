@@ -2,16 +2,22 @@ import json
 import os
 from functools import partial
 from typing import List, Union, Tuple, Any, cast
+from math import log
 
 from neo3 import vm, contracts, blockchain
-from neo3.contracts import ApplicationEngine
+from neo3.contracts import ApplicationEngine, interop
+from neo3.contracts.native import NativeContract
 from neo3.core import types
 from neo3.core.types import UInt160
 from neo3.network import payloads
-
+from neo3.storage import StorageContext
+from neo3.contracts import NeoToken, GasToken
+neo, gas = NeoToken(), GasToken()
 
 class TestEngine:
     NO_SIGNER = 'NO_SIGNER'
+    Prefix_Account = 20
+    Number_Prefix = b'\x04'
     
     @staticmethod
     def new_engine(previous_engine: ApplicationEngine = None) -> ApplicationEngine:
@@ -60,6 +66,7 @@ class TestEngine:
         Only the contract specified in __init__ can be tested. You can deploy more contracts to be called by the tested
         contract.
         """
+        self.Prefix_Account_bytes = self.int_to_bytes(self.Prefix_Account)
         self.raw_nef, self.raw_manifest = self.read_raw_nef_and_raw_manifest(nef_path, manifest_path)
         self.nef, self.manifest = self.build_nef_and_manifest_from_raw(self.raw_nef, self.raw_manifest)
         self.previous_engine: ApplicationEngine = self.new_engine()
@@ -102,8 +109,11 @@ class TestEngine:
     @staticmethod
     def param_auto_checker(param: Any) -> Any:
         type_param = type(param)
-        if type_param is str and len(param) == 40:
-            return types.UInt160.from_string(param).to_array()
+        if type_param is str:
+            if len(param) == 40:
+                return types.UInt160.from_string(param).to_array()
+            elif len(param) == 42 and param.startswith('0x'):
+                return types.UInt160.from_string(param[2:]).to_array()
         if type_param is UInt160:
             return param.to_array()
         else:
@@ -118,7 +128,20 @@ class TestEngine:
             return payloads.Signer(signer, scope)
         else:
             raise ValueError(f'Unable to handle signer {signer} with type {type_signer}')
-    
+
+    @staticmethod
+    def int_to_bytes(int_: int, bytes_needed: int = None):
+        if not bytes_needed:
+            bytes_needed = int(log(int_, 256)) + 1  # may be not accurate
+        try:
+            return int_.to_bytes(bytes_needed, 'little')
+        except OverflowError:
+            return int_.to_bytes(bytes_needed + 1, 'little')
+
+    @staticmethod
+    def bytes_to_int(bytes_: bytes):
+        return int.from_bytes(bytes_, byteorder='little', signed=False)
+
     def invoke_method(self, method: str, params: List = None, signers: List[Union[str, UInt160]] = None,
                       scope: payloads.WitnessScope = payloads.WitnessScope.CALLED_BY_ENTRY,
                       engine: ApplicationEngine = None, with_print=False) -> ApplicationEngine:
@@ -197,12 +220,34 @@ class TestEngine:
         print(state, result)
     
     def reset_environment(self):
-        '''
+        """
         reset the blockchain environment, and re-deploy all the contracts that have been deployed.
-        '''
+        """
         self.previous_engine = self.new_engine()
         for contract in self.deployed_contracts:
             self.previous_engine.snapshot.contracts.put(contract)
             
+    def set_NEP17_token_balance(self, token_contract: Union[contracts.ContractState, NativeContract], account:Union[UInt160, str],
+                                amount: Union[int, float] = 2147483647, bytes_needed: int = None):
+        """
+        This is achieved by directly changing the storage of the NEP17 contract
+        :param token_contract: contract managing the token
+        :param account: ScriptHash of wallet which will receive the token
+        :param amount: care for the decimals!
+        :param bytes_needed: how many bytes are used in the contract to represent the number of tokens
+        :return:
+        """
+        amount = int(amount)
+        assert 0 <= amount <= 2147483647  # 0x7fffffff  # overflowing values result in minus balance
+        engine = self.new_engine(self.previous_engine)
+        account = self.param_auto_checker(account)
+        if token_contract == neo:
+            bytes_needed = 9
+        contracts.interop.storage_put(engine, StorageContext(token_contract.id, False),
+                                      self.Prefix_Account_bytes + account,
+                                      self.Number_Prefix + self.int_to_bytes(amount, bytes_needed=bytes_needed))
+        engine.snapshot.commit()
+        self.previous_engine = engine
+        
     def __repr__(self):
         return f'class TestEngine: {self.state} {self.previous_processed_result}'

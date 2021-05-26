@@ -6,6 +6,7 @@ from neo3.vm import IntegerStackItem, VMState
 import datetime, time
 from neo3.contracts import NeoToken, GasToken
 neo, gas = NeoToken(), GasToken()
+from neo_test_with_rpc import Hash160Str
 
 nef_path = 'rToken.nef'
 contract_owner_pubkey = '0355688d0a1dc59a51766b3736eee7617404f2e0af1eb36e57f11e647297ad8b34'
@@ -29,12 +30,14 @@ engine.invoke_method_with_print("getPairsMap", params=[UInt160.deserialize_from_
 assert b'pairs' + a_collateral in list(engine.previous_processed_result.keys())[0]
 engine.invoke_method_with_print('getPairAttributes', params=[list(engine.previous_processed_result.values())[0]], result_interpreted_as_iterator=True)
 # The following codes require wallet support from neo-mamba
+engine.set_NEP17_token_balance(neo, contract_owner_hash)
+engine.set_NEP17_token_balance(gas, contract_owner_hash)
 engine.invoke_method_of_arbitrary_contract(neo.hash, 'balanceOf', [contract_owner_hash])
-print('invoke method balanceOf me:'); engine.print_results()
-engine.invoke_method_of_arbitrary_contract(neo.hash, 'balanceOf', [neo.hash])
-print('invoke method balanceOf neo:'); engine.print_results()
-engine.invoke_method_of_arbitrary_contract(neo.hash, 'transfer', [neo.hash, contract_owner_hash, 100, b'data'], signers=[neo.hash])
-print('invoke method transfer:')
-engine.print_results()
-engine.invoke_method_with_print("deposit", params=[neo.hash, gas.hash, _30_days_later_ending_milisecond, mint_ratio, 1], signers=[engine.contract.hash])
-print()
+print('invoke method balanceOf my NEO:'); engine.print_results()
+engine.invoke_method_of_arbitrary_contract(gas.hash, 'balanceOf', [contract_owner_hash])
+print('invoke method balanceOf my GAS:'); engine.print_results()
+engine.invoke_method_with_print("deposit", params=[neo.hash, gas.hash, _30_days_later_ending_milisecond, mint_ratio, 1], signers=[engine.contract.hash, contract_owner_hash])
+
+consensus_script_hash = str(Hash160Str.from_UInt160(UInt160.deserialize_from_bytes(b'\xc0\x00\xdd\xe5TSvr1\xd9\xf9\x0b\xb4\xb9\xd5j\xa2x\xccU')))
+engine.invoke_method_of_arbitrary_contract(neo.hash, 'balanceOf', [consensus_script_hash])
+print('invoke method balanceOf consensus NEO:'); engine.print_results()
