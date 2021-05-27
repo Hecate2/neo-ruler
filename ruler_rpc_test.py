@@ -2,25 +2,27 @@ from neo_test_with_rpc import TestClient, Hash160Str, Hash256Str, Signer, Witnes
 from utils import gen_expiry_timestamp_and_str
 from neo3.contracts import NeoToken, GasToken
 neo, gas = NeoToken(), GasToken()
-neo_hash160str = Hash160Str.from_UInt160(neo.hash)
-gas_hash160str = Hash160Str.from_UInt160(gas.hash)
 
 target_url = 'http://127.0.0.1:23332'
 
 # make sure you deploy ruler.nef manually
-contract_hash = Hash256Str('0x59916d8c2fc5feb06b77aec289ac34b49ae3bccb1f88fe64ea5172c79fc1af05')
+contract_hash = Hash160Str('0x709dcde755e9152fa3b6b7f9e9d116f8eecdbc1b')
 
-consensus_wallet_hash = Hash160Str('0x41a762a20b49b1250cccbc68b5fbdb0557c6e608')
-consensus_wallet_address = 'NLj33oVWYzXQNBJDfznhJ2JQ1Sx3P1FtC6'
+consensus_wallet_hash = Hash160Str('0xb1d5f6a149539e83afb53ce3af2d7fc4fe634880')
+consensus_wallet_address = 'NXcGQ6d4162MyrryfN3gdWJGvzNEw8AtCQ'
+consensus_signer = Signer(consensus_wallet_hash, WitnessScope.CalledByEntry)
+
+dev_wallet_hash = Hash160Str('0x71929fb00416c7333e404f8a482cd9ccf9e4aadb')
+dev_wallet_address = 'NfwTtijo9uqeJDiuryu8eqADn9ALnPgmQd'
+dev_signer = Signer(dev_wallet_hash, WitnessScope.CalledByEntry)
+
 administrating_client = TestClient(target_url, consensus_wallet_hash, consensus_wallet_address, 'consensus.json', '1')
 administrating_client.openwallet()
 expiry_timestamp, expiry_str = gen_expiry_timestamp_and_str(30)
 mint_ratio = 7
-print(administrating_client.invokefunction(contract_hash, 'addPair', [neo_hash160str, gas_hash160str, expiry_timestamp, expiry_str, mint_ratio, str(mint_ratio), 0]))
-
-dev_wallet_hash = Hash160Str('0x6d629e44cceaf8722c99a41d5fb98cf3472c286a')
-dev_wallet_address = 'NVbGwMfRQVudTjWAUJwj4K68yyfXjmgbPp'
-dev_signer = Signer(dev_wallet_hash, WitnessScope.CalledByEntry)
+fee_rate = 0
+administrating_client.invokefunction(contract_hash, 'addPair', [neo.hash, gas.hash, expiry_timestamp, expiry_str, mint_ratio, str(mint_ratio), fee_rate])
+administrating_client.print_previous_result()
 
 dev_client = TestClient(target_url, dev_wallet_hash, dev_wallet_address, 'dev.json', '1')
 dev_client.openwallet()

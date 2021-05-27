@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Union, Dict
 from enum import Enum
 import json
 import requests
@@ -122,6 +122,7 @@ class TestClient:
         self.wallet_address = wallet_address
         self.wallet_path = wallet_path
         self.wallet_password = wallet_password
+        self.previous_post_data = None
         
     @staticmethod
     def request_body_builder(method, parameters: List):
@@ -133,11 +134,30 @@ class TestClient:
        }, separators=(',', ':'))
     
     @retry(RequestExceptions, tries=2, logger=None)
-    def meta_rpc_method(self, method:str, parameters:List) -> dict:
-        result = json.loads(self.session.post(self.target_url,
-                                 self.request_body_builder(method, parameters), timeout=request_timeout).text)
-        
+    def meta_rpc_method(self, method:str, parameters:List, relay:bool=True) -> dict:
+        post_data = self.request_body_builder(method, parameters)
+        self.previous_post_data = post_data
+        result = json.loads(self.session.post(self.target_url, post_data, timeout=request_timeout).text)
+        if 'error' in result:
+            raise ValueError(result['error']['message'])
+        if type(result['result']) is dict:
+            if result['result']['state'] != 'HALT':
+                print(result)
+                raise ValueError(result['result']['exception'])
+            if relay and 'tx' in result['result']:
+                tx = result['result']['tx']
+                self.sendrawtransaction(tx)
+        self.previous_result = result
         return result
+    
+    def print_previous_result(self):
+        print(self.previous_result)
+    
+    def sendrawtransaction(self, transaction:str):
+        """
+        :param transaction: result['tx']. e.g. "ALmNfAb4lqIAAA...="
+        """
+        return self.meta_rpc_method("sendrawtransaction", [transaction], relay=False)
     
     def openwallet(self, path: str=None, password: str=None) -> dict:
         """
@@ -153,9 +173,15 @@ class TestClient:
             raise ValueError(f'Failed to open wallet {path} with given password.')
         return open_wallet_raw_result
     
-    def invokefunction(self, scripthash:Hash256Str, operation:str, params:List[Dict[str,str]], signers:List[Signer]=None) -> dict:
-        def parse_params(param):
+    def invokefunction(self, scripthash:Hash160Str, operation:str,
+                       params:List[Union[str, int, Hash160Str, UInt160]], signers:List[Signer]=None) -> dict:
+        def parse_params(param: Union[str, int, Hash160Str, UInt160]) -> Dict[str, str]:
             type_param = type(param)
+            if type_param is UInt160:
+                return {
+                    'type': 'Hash160',
+                    'value': str(Hash160Str.from_UInt160(param)),
+                }
             if type_param is Hash160Str:
                 return {
                     'type':'Hash160',
@@ -180,8 +206,8 @@ class TestClient:
         parameters = [
             str(scripthash),
             operation,
-            list(map(lambda param:parse_params(param),params)),
-            list(map(lambda signer:signer.to_dict(), signers)),
+            list(map(lambda param: parse_params(param), params)),
+            list(map(lambda signer: signer.to_dict(), signers)),
         ]
         return self.meta_rpc_method('invokefunction', parameters)
     
@@ -215,11 +241,11 @@ class TestClient:
     def send_gas_to_address(self, to_address: Hash160Str, value:int):
         return self.sendtoaddress(Hash160Str.from_UInt160(GasToken().hash), to_address, value)
 
-    def getwalletbalance(self, asset_id: Hash160Str):
-        return self.meta_rpc_method('getwalletbalance', [asset_id.to_str()])['result']['balance']
+    def getwalletbalance(self, asset_id: Hash160Str) -> int:
+        return int(self.meta_rpc_method('getwalletbalance', [asset_id.to_str()])['result']['balance'])
     
-    def get_neo_balance(self):
+    def get_neo_balance(self) -> int:
         return self.getwalletbalance(Hash160Str.from_UInt160(NeoToken().hash))
     
-    def get_gas_balance(self):
+    def get_gas_balance(self) -> int:
         return self.getwalletbalance(Hash160Str.from_UInt160(GasToken().hash))
