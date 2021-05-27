@@ -86,7 +86,8 @@ class Hash160Str(HashStr):
 
 
 class Signer:
-    def __init__(self, account:Hash160Str, scopes:WitnessScope, allowedcontracts:List[Hash160Str]=None, allowedgroups:List[str]=None):
+    def __init__(self, account:Hash160Str, scopes:WitnessScope=WitnessScope.CalledByEntry,
+                 allowedcontracts:List[Hash160Str]=None, allowedgroups:List[str]=None):
         self.account:Hash160Str = account
         self.scopes:WitnessScope = scopes
         if allowedcontracts == None:
@@ -106,7 +107,8 @@ class Signer:
 
 
 class TestClient:
-    def __init__(self, target_url: str, wallet_scripthash:Hash160Str, wallet_address:str, wallet_path: str, wallet_password: str, session=requests.Session()):
+    def __init__(self, target_url: str, wallet_scripthash:Hash160Str, wallet_address:str,
+                 wallet_path: str, wallet_password: str, session=requests.Session()):
         """
         
         :param target_url: url to the rpc server affliated to neo-cli
@@ -119,6 +121,7 @@ class TestClient:
         self.target_url = target_url
         self.session = session
         self.wallet_scripthash = wallet_scripthash
+        self.signer = Signer(wallet_scripthash)
         self.wallet_address = wallet_address
         self.wallet_path = wallet_path
         self.wallet_password = wallet_password
@@ -141,7 +144,7 @@ class TestClient:
         if 'error' in result:
             raise ValueError(result['error']['message'])
         if type(result['result']) is dict:
-            if result['result']['state'] != 'HALT':
+            if 'exception' in result['result']:
                 print(result)
                 raise ValueError(result['result']['exception'])
             if relay and 'tx' in result['result']:
@@ -202,7 +205,7 @@ class TestClient:
         if not params:
             params = []
         if not signers:
-            signers = []
+            signers = [self.signer]
         parameters = [
             str(scripthash),
             operation,
@@ -223,7 +226,7 @@ class TestClient:
         :return:
         """
         if not signers:
-            signers = []
+            signers = [self.signer]
         return self.meta_rpc_method('sendfrom', [
             asset_id.to_str(),
             from_address, to_address, value,

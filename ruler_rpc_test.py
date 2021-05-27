@@ -18,7 +18,7 @@ dev_signer = Signer(dev_wallet_hash, WitnessScope.CalledByEntry)
 
 administrating_client = TestClient(target_url, consensus_wallet_hash, consensus_wallet_address, 'consensus.json', '1')
 administrating_client.openwallet()
-expiry_timestamp, expiry_str = gen_expiry_timestamp_and_str(30)
+expiry_timestamp, expiry_str = gen_expiry_timestamp_and_str(60)
 mint_ratio = 7
 fee_rate = 0
 administrating_client.invokefunction(contract_hash, 'addPair', [neo.hash, gas.hash, expiry_timestamp, expiry_str, mint_ratio, str(mint_ratio), fee_rate])

@@ -36,7 +36,7 @@ engine.invoke_method_of_arbitrary_contract(neo.hash, 'balanceOf', [contract_owne
 print('invoke method balanceOf my NEO:'); engine.print_results()
 engine.invoke_method_of_arbitrary_contract(gas.hash, 'balanceOf', [contract_owner_hash])
 print('invoke method balanceOf my GAS:'); engine.print_results()
-engine.invoke_method_with_print("deposit", params=[neo.hash, gas.hash, _30_days_later_ending_milisecond, mint_ratio, 1], signers=[engine.contract.hash, contract_owner_hash])
+engine.invoke_method_with_print("deposit", params=[neo.hash, gas.hash, _30_days_later_ending_milisecond, mint_ratio, 1], signers=[contract_owner_hash])
 
 consensus_script_hash = str(Hash160Str.from_UInt160(UInt160.deserialize_from_bytes(b'\xc0\x00\xdd\xe5TSvr1\xd9\xf9\x0b\xb4\xb9\xd5j\xa2x\xccU')))
 engine.invoke_method_of_arbitrary_contract(neo.hash, 'balanceOf', [consensus_script_hash])
