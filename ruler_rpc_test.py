@@ -9,7 +9,7 @@ neo, gas = NeoToken(), GasToken()
 target_url = 'http://127.0.0.1:23332'
 
 # make sure you deploy ruler.nef manually
-contract_hash = Hash160Str('0xaa2880819c862fdd1a3c71bad725b3aa6bf7bfe3')
+contract_hash = Hash160Str('0x1e015ff27b044c94190a22c92e0bafa5a01a8d14')
 
 consensus_wallet_address = 'NhSRQSzNv8BwjKwQn2Spk7tY194uxXiESv'
 consensus_wallet_hash = Hash160Str('0x113f10ed24f2b70115d37c103130a236b7011dec')
@@ -21,7 +21,7 @@ dev_signer = Signer(dev_wallet_hash, WitnessScope.CalledByEntry)
 
 administrating_client = TestClient(target_url, contract_hash, consensus_wallet_hash, consensus_wallet_address, 'consensus.json', '1')
 administrating_client.openwallet()
-expiry_timestamp, expiry_str = gen_expiry_timestamp_and_str(30)
+expiry_timestamp, expiry_str = gen_expiry_timestamp_and_str(40)
 mint_ratio = 7
 fee_rate = 0
 try:
@@ -49,7 +49,7 @@ attributes = ClientResultInterpreter.interpret_getPairAttribtutes(dev_client.pre
 print(attributes)
 
 dev_client.invokefunction("deposit",
-    params=[attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 1],
+    params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 1],
     signers=[Signer(dev_wallet_hash, WitnessScope.Global)])
 dev_client.print_previous_result()
 print()

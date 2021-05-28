@@ -180,7 +180,7 @@ def _insert_pair(active: bool, feeRate: int, mintRatio: int, expiry: int,
 
 
 @public
-def deposit(_col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _colAmt: int) -> bool:
+def deposit(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _colAmt: int) -> bool:
     """
     deposit collateral to a Ruler Pair, and the sender receives rcTokens and rrTokens
     :param _col:
@@ -194,12 +194,12 @@ def deposit(_col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _col
     _validateDepositInputs(pair)
     # Before taking collateral from message sender,
     # get the balance of collateral of this contract
-    assert call_contract(_col, "transfer", [calling_script_hash, executing_script_hash, _colAmt, "Transfer from caller to Ruler"]), "Failed to transfer collateral from caller to ruler."
+    assert call_contract(_col, "transfer", [invoker, executing_script_hash, _colAmt, "Transfer from caller to Ruler"]), "Failed to transfer collateral from caller to ruler."
     colTotal_key = gen_pair_key(pair, "colTotal")
     pair_map.put(colTotal_key, pair_map.get(colTotal_key).to_int() + _colAmt)
     mintAmount = _getRTokenAmtFromColAmt(_colAmt, _col, _paired, _mintRatio)
-    call_contract(cast(UInt160, get_pair_attribute(pair, "rcToken")), "mint", [calling_script_hash, mintAmount])
-    call_contract(cast(UInt160, get_pair_attribute(pair, "rrToken")), "mint", [calling_script_hash, mintAmount])
+    call_contract(cast(UInt160, get_pair_attribute(pair, "rcToken")), "mint", [invoker, mintAmount])
+    call_contract(cast(UInt160, get_pair_attribute(pair, "rrToken")), "mint", [invoker, mintAmount])
     return True
 
 
@@ -254,7 +254,7 @@ def redeem(_col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _colA
 
 
 @public
-def repay(_col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _rrTokenAmt: int):
+def repay(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _rrTokenAmt: int):
     """
     repay the contract with rrTokens and paired token amount, and sender receives collateral.
     NO fees charged on collateral
@@ -268,22 +268,22 @@ def repay(_col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _rrTok
     pair = _get_pair_with_assertion(_col, _paired, _expiry, _mintRatio)
     _validateDepositInputs(pair)
 
-    call_contract(_paired, "transfer", [calling_script_hash, executing_script_hash, _rrTokenAmt, "Transfer from caller to Ruler"])
-    call_contract(cast(UInt160, get_pair_attribute(pair, "rrToken")), "burnByRuler", [calling_script_hash, _rrTokenAmt])
+    call_contract(_paired, "transfer", [invoker, executing_script_hash, _rrTokenAmt, "Transfer from caller to Ruler"])
+    call_contract(cast(UInt160, get_pair_attribute(pair, "rrToken")), "burnByRuler", [invoker, _rrTokenAmt])
 
     colAmountToPay = _getColAmtFromRTokenAmt(_rrTokenAmt, _col, cast(UInt160, get_pair_attribute(pair, "rcToken")), get_pair_attribute(pair, "mintRatio").to_int())
-    call_contract(_col, "transfer", [executing_script_hash, calling_script_hash, colAmountToPay, "Transfer from Ruler to caller"])
+    call_contract(_col, "transfer", [executing_script_hash, invoker, colAmountToPay, "Transfer from Ruler to caller"])
 
 
 @public
-def burn_rrToken_after_expiry(_col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _rrTokenAmt: int):
+def burn_rrToken_after_expiry(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _rrTokenAmt: int):
     pair = _get_pair_with_assertion(_col, _paired, _expiry, _mintRatio)
     assert get_time > _expiry, "You can only burn your rrToken after the loan expires"
-    call_contract(cast(UInt160, get_pair_attribute(pair, "rrToken")), "burnByRuler", [calling_script_hash, _rrTokenAmt])
+    call_contract(cast(UInt160, get_pair_attribute(pair, "rrToken")), "burnByRuler", [invoker, _rrTokenAmt])
 
 
 @public
-def collect(_col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _rcTokenAmt: int):
+def collect(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _rcTokenAmt: int):
     """
     sender collect paired tokens by returning same amount of rcTokens to Ruler
     :param _col:
@@ -296,27 +296,27 @@ def collect(_col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _rcT
     pair = _get_pair_with_assertion(_col, _paired, _expiry, _mintRatio)
     # assert cast(int, pair["mintRatio"]) != 0, "Ruler: pair does not exist"
     assert get_time > get_pair_attribute(pair, "expiry").to_int(), "Ruler: loan not expired"
-    call_contract(cast(UInt160, get_pair_attribute(pair, "rcToken")), "burnByRuler", [calling_script_hash, _rcTokenAmt])
+    call_contract(cast(UInt160, get_pair_attribute(pair, "rcToken")), "burnByRuler", [invoker, _rcTokenAmt])
     
     defaultedLoanAmt = cast(int, call_contract(cast(UInt160, get_pair_attribute(pair, "rrToken")), "totalSupply", []))
     if defaultedLoanAmt == 0:
-        _sendAmtPostFeesOptionalAccrue(cast(UInt160, get_pair_attribute(pair, "pairedToken")), _rcTokenAmt, get_pair_attribute(pair, "feeRate").to_int(), False)
+        _sendAmtPostFeesOptionalAccrue(invoker, cast(UInt160, get_pair_attribute(pair, "pairedToken")), _rcTokenAmt, get_pair_attribute(pair, "feeRate").to_int(), False)
     else:
         mintRatio = get_pair_attribute(pair, "mintRatio").to_int()
         feeRate = get_pair_attribute(pair, "feeRate").to_int()
         rcTokensEligibleAtExpiry = _getRTokenAmtFromColAmt(get_pair_attribute(pair, "colTotal").to_int(), _col, _paired, mintRatio)
         
         pairedTokenAmtToCollect = _rcTokenAmt * (rcTokensEligibleAtExpiry - defaultedLoanAmt) // rcTokensEligibleAtExpiry
-        _sendAmtPostFeesOptionalAccrue(cast(UInt160, get_pair_attribute(pair, "pairedToken")), pairedTokenAmtToCollect, feeRate, False)
+        _sendAmtPostFeesOptionalAccrue(invoker, cast(UInt160, get_pair_attribute(pair, "pairedToken")), pairedTokenAmtToCollect, feeRate, False)
         
         colAmount = _getColAmtFromRTokenAmt(_rcTokenAmt, _col, cast(UInt160, get_pair_attribute(pair, "rcToken")), mintRatio)
         colAmountToCollect = colAmount * defaultedLoanAmt // rcTokensEligibleAtExpiry
-        _sendAmtPostFeesOptionalAccrue(_col, colAmountToCollect, feeRate, True)
+        _sendAmtPostFeesOptionalAccrue(invoker, _col, colAmountToCollect, feeRate, True)
 
 
-def _sendAmtPostFeesOptionalAccrue(_token: UInt160, _amount: int, _feeRate: int, _accrue: bool):
+def _sendAmtPostFeesOptionalAccrue(invoker: UInt160, _token: UInt160, _amount: int, _feeRate: int, _accrue: bool):
     fees = _amount * _feeRate // 100_000_000
-    call_contract(_token, "transfer", [executing_script_hash, calling_script_hash, _amount - fees])
+    call_contract(_token, "transfer", [executing_script_hash, invoker, _amount - fees])
     if _accrue:
         original_fee = feesMap.get(_token).to_int()
         feesMap.put(_token, original_fee + fees)
