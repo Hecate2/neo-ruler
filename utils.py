@@ -1,7 +1,64 @@
+from typing import Tuple, List, Dict
+from enum import Enum
+
+import base64
 import time
 import datetime
-from typing import Tuple
+from neo3.core.types import UInt160
 
+
+class HashStr(str):
+    def __init__(self, string: str):
+        super(HashStr, self).__init__()
+        # check length of string here
+        # assert string.startswith('0x')
+        self.string = string
+    
+    def to_str(self):
+        return self.string
+    
+    def __str__(self):
+        return self.string
+    
+    def __repr__(self):
+        return self.string
+
+
+class Hash256Str(HashStr):
+    """
+    0x59916d8c2fc5feb06b77aec289ac34b49ae3bccb1f88fe64ea5172c79fc1af05
+    """
+
+    def __init__(self, string: str):
+        # assert string.startswith('0x')
+        if len(string) == 64:
+            string = '0x' + string
+        assert len(string) == 66
+        super().__init__(string)
+
+
+class Hash160Str(HashStr):
+    """
+    0xf61eebf573ea36593fd43aa150c055ad7906ab83
+    """
+    
+    def __init__(self, string: str):
+        # assert string.startswith('0x')
+        if len(string) == 40:
+            string = '0x' + string
+        assert len(string) == 42
+        super().__init__(string)
+    
+    @classmethod
+    def from_UInt160(cls, u: UInt160):
+        u_bytearray = bytearray(u._data)
+        u_bytearray.reverse()
+        hash160str = u_bytearray.hex()
+        return cls(hash160str)
+    
+    def to_UInt160(self):
+        return UInt160.from_string(self.string)
+    
 
 def gen_expiry_timestamp_and_str(days) -> Tuple[int, str]:
     today = datetime.date.today()
@@ -10,6 +67,84 @@ def gen_expiry_timestamp_and_str(days) -> Tuple[int, str]:
     days_later_date_str = days_later.strftime('%m_%d_%Y')
     return days_later_ending_milisecond, days_later_date_str
 
+
+class WitnessScope(Enum):
+    NONE = 'None'
+    CalledByEntry = 'CalledByEntry'
+    CustomContracts = 'CustomContracts'
+    CustomGroups = 'CustomGroups'
+    Global = 'Global'
+
+
+class Signer:
+    def __init__(self, account: Hash160Str, scopes: WitnessScope = WitnessScope.CalledByEntry,
+                 allowedcontracts: List[Hash160Str] = None, allowedgroups: List[str] = None):
+        self.account: Hash160Str = account
+        self.scopes: WitnessScope = scopes
+        if allowedcontracts == None:
+            allowedcontracts = []
+        self.allowedcontracts = [str(allowedcontract) for allowedcontract in allowedcontracts]
+        if allowedgroups == None:
+            allowedgroups = []
+        self.allowedgroups = allowedgroups
+    
+    def to_dict(self):
+        return {
+            'account': str(self.account),
+            'scopes': self.scopes.value,
+            'allowedcontracts': self.allowedcontracts,
+            'allowedgroups': self.allowedgroups,
+        }
+
+
+class ClientResultInterpreter:
+    @staticmethod
+    def interpret_raw_result_as_iterator(result):
+        return result['result']['stack'][0]['iterator']
+    
+    @staticmethod
+    def bytes_to_int(bytes_: bytes):
+        return int.from_bytes(bytes_, byteorder='little', signed=False)
+
+    @staticmethod
+    def bytes_to_Hash160str(bytestring: bytes):
+        return Hash160Str.from_UInt160(UInt160.deserialize_from_bytes(bytestring))
+
+    @staticmethod
+    def base64_struct_to_bytestrs(base64_struct: dict) -> List[bytes]:
+        processed_struct = []
+        if type(base64_struct) is dict and 'type' in base64_struct and base64_struct['type'] == 'Struct':
+            values = base64_struct['value']
+            for value in values:
+                if value['type'] == 'ByteString':
+                    processed_struct.append(base64.b64decode(value['value']))
+        return processed_struct
+    
+    @staticmethod
+    def interpret_getCollaterals(collaterals:List[dict]):
+        return [ClientResultInterpreter.bytes_to_Hash160str(base64.b64decode(collateral['value'][0]['value'])[len(b'collaterals'):]) for collateral in collaterals]
+
+    @staticmethod
+    def interpret_getPairsMap(Pairs:List[dict]) -> Dict[int, Hash160Str]:
+        bytestr_pairs = [ClientResultInterpreter.base64_struct_to_bytestrs(Pair) for Pair in Pairs]
+        pairs = dict()
+        for pair in bytestr_pairs:
+            paired_token_address_bytes = pair[0][(len(b'pairs')+21):]
+            pairs[ClientResultInterpreter.bytes_to_int(pair[1])] = ClientResultInterpreter.bytes_to_Hash160str(paired_token_address_bytes)
+        return pairs
+    
+    @staticmethod
+    def interpret_getPairAttribtutes(Pair):
+        pair_attributes = dict()
+        for attribute in Pair:
+            attribute = ClientResultInterpreter.base64_struct_to_bytestrs(attribute)
+            attribute_name = attribute[0].split(b'_')[2].decode()
+            if 'Token' in attribute_name:
+                attribute_value = ClientResultInterpreter.bytes_to_Hash160str(attribute[1])
+            else:
+                attribute_value = ClientResultInterpreter.bytes_to_int(attribute[1])
+            pair_attributes[attribute_name] = attribute_value
+        return pair_attributes
 
 if __name__ == '__main__':
     print('30 days:', gen_expiry_timestamp_and_str(30))

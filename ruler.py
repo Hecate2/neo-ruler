@@ -159,13 +159,11 @@ def get_pair_attribute(pair_index: int, attribute: str) -> bytes:
     return pair_map.get(gen_pair_key(pair_index, attribute))
 
 
-def _insert_pair(_col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int,
-                 active: bool, feeRate: int, mintRatio: int, expiry: int, pairedToken: UInt160,
+def _insert_pair(active: bool, feeRate: int, mintRatio: int, expiry: int,
+                 collateralToken: UInt160, pairedToken: UInt160,
                  rcToken: UInt160, rrToken: UInt160, colTotal: int) -> int:
     """
     pairs[_col][_paired][_expiry][_mintRatio] = pair. This method does not consider whether the pair exists
-    parameters starting with '_' are keys for maps
-    paramaters not starting with '_' are attributes of pair
     """
     max_index = get(pair_max_index_key).to_int()
     pair_map.put(gen_pair_key(max_index, "active"), active)
@@ -173,6 +171,7 @@ def _insert_pair(_col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int,
     pair_map.put(gen_pair_key(max_index, "mintRatio"), mintRatio)
     pair_map.put(gen_pair_key(max_index, "expiry"), expiry)
     pair_map.put(gen_pair_key(max_index, "pairedToken"), pairedToken)
+    pair_map.put(gen_pair_key(max_index, "collateralToken"), collateralToken)
     pair_map.put(gen_pair_key(max_index, "rcToken"), rcToken)
     pair_map.put(gen_pair_key(max_index, "rrToken"), rrToken)
     pair_map.put(gen_pair_key(max_index, "colTotal"), colTotal)
@@ -395,11 +394,12 @@ def addPair(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str, _min
     #     'mintRatio': _mintRatio,
     #     'expiry': _expiry,
     #     'pairedToken': _paired,
+    #     'collateralToken': _col,
     #     'rcToken': _createRToken(_col, _paired, _expiry, _expiryStr, _mintRatioStr, "RC_", paired_token_decimals),
     #     'rrToken': _createRToken(_col, _paired, _expiry, _expiryStr, _mintRatioStr, "RR_", paired_token_decimals),
     #     'colTotal': 0,
     # }
-    pair = _insert_pair(_col, _paired, _expiry, _mintRatio, True, _feeRate, _mintRatio, _expiry, _paired,
+    pair = _insert_pair(True, _feeRate, _mintRatio, _expiry, _col, _paired,
                  _createRToken(_col, _paired, _expiry, _expiryStr, _mintRatioStr, bytearray(b"RC") + SEPARATOR, paired_token_decimals),
                  _createRToken(_col, _paired, _expiry, _expiryStr, _mintRatioStr, bytearray(b"RR") + SEPARATOR, paired_token_decimals),
                  0)

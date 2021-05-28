@@ -6,7 +6,7 @@ from neo3.vm import IntegerStackItem, VMState
 import datetime, time
 from neo3.contracts import NeoToken, GasToken
 neo, gas = NeoToken(), GasToken()
-from neo_test_with_rpc import Hash160Str
+from utils import Hash160Str
 
 nef_path = 'rToken.nef'
 contract_owner_pubkey = '0355688d0a1dc59a51766b3736eee7617404f2e0af1eb36e57f11e647297ad8b34'

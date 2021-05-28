@@ -1,9 +1,10 @@
 from typing import List, Union, Dict
-from enum import Enum
+import base64
 import json
 import requests
 from neo_test_with_rpc.retry import retry, RetryExhausted
 
+from utils import Hash160Str, Signer
 from neo3.core.types import UInt160
 from neo3.core.serialization import BinaryReader
 from neo3.contracts import NeoToken, GasToken
@@ -15,99 +16,11 @@ RequestExceptions=(
     requests.HTTPError,
     requests.Timeout,
     )
-request_timeout = 10
-
-
-class WitnessScope(Enum):
-    NONE = 'None'
-    CalledByEntry = 'CalledByEntry'
-    CustomContracts = 'CustomContracts'
-    CustomGroups = 'CustomGroups'
-    Global = 'Global'
-
-
-class HashStr(str):
-    def __init__(self, string:str):
-        super(HashStr, self).__init__()
-        # check length of string here
-        # assert string.startswith('0x')
-        self.string = string
-
-    def to_str(self):
-        return self.string
-    def __str__(self):
-        return self.string
-    def __repr__(self):
-        return self.string
-    
-    
-
-class Hash256Str(HashStr):
-    """
-    0x59916d8c2fc5feb06b77aec289ac34b49ae3bccb1f88fe64ea5172c79fc1af05
-    """
-
-    def __init__(self, string: str):
-        # assert string.startswith('0x')
-        if len(string) == 64:
-            string = '0x' + string
-        assert len(string) == 66
-        super().__init__(string)
-
-
-class Hash160Str(HashStr):
-    """
-    0xf61eebf573ea36593fd43aa150c055ad7906ab83
-    """
-    def __init__(self, string:str):
-        # assert string.startswith('0x')
-        if len(string) == 40:
-            string = '0x' + string
-        assert len(string) == 42
-        super().__init__(string)
-    
-    @classmethod
-    def from_UInt160(cls, u:UInt160):
-        u_bytearray = bytearray(u._data)
-        u_bytearray.reverse()
-        hash160str = u_bytearray.hex()
-        return cls(hash160str)
-    
-    def to_UInt160(self):
-        return UInt160.from_string(self.string)
-    
-    def to_str(self):
-        return self.string
-        
-    def __str__(self):
-        return self.string
-    def __repr__(self):
-        return self.string
-
-
-class Signer:
-    def __init__(self, account:Hash160Str, scopes:WitnessScope=WitnessScope.CalledByEntry,
-                 allowedcontracts:List[Hash160Str]=None, allowedgroups:List[str]=None):
-        self.account:Hash160Str = account
-        self.scopes:WitnessScope = scopes
-        if allowedcontracts == None:
-            allowedcontracts = []
-        self.allowedcontracts = [str(allowedcontract) for allowedcontract in allowedcontracts]
-        if allowedgroups == None:
-            allowedgroups = []
-        self.allowedgroups = allowedgroups
-        
-    def to_dict(self):
-        return {
-            'account': str(self.account),
-            'scopes': self.scopes.value,
-            'allowedcontracts': self.allowedcontracts,
-            'allowedgroups': self.allowedgroups,
-        }
+request_timeout = 20
 
 
 class TestClient:
-    def __init__(self, target_url: str, wallet_scripthash:Hash160Str, wallet_address:str,
+    def __init__(self, target_url: str, contract_scripthash: Hash160Str, wallet_scripthash:Hash160Str, wallet_address:str,
                  wallet_path: str, wallet_password: str, session=requests.Session()):
         """
         
@@ -119,6 +32,7 @@ class TestClient:
         :param session: requests.Session
         """
         self.target_url = target_url
+        self.contract_scripthash = contract_scripthash
         self.session = session
         self.wallet_scripthash = wallet_scripthash
         self.signer = Signer(wallet_scripthash)
@@ -136,6 +50,20 @@ class TestClient:
            "id": 1,
        }, separators=(',', ':'))
     
+    @staticmethod
+    def bytes_to_UInt160(bytestring: bytes):
+        return Hash160Str.from_UInt160(UInt160.deserialize_from_bytes(bytestring))
+    
+    @staticmethod
+    def base64_struct_to_bytestrs(base64_struct: dict) -> List[bytes]:
+        processed_struct = []
+        if type(base64_struct) is dict and 'type' in base64_struct and base64_struct['type'] == 'Struct':
+            values = base64_struct['value']
+            for value in values:
+                if value['type'] == 'ByteString':
+                    processed_struct.append(base64.b64decode(value['value']))
+        return processed_struct
+    
     @retry(RequestExceptions, tries=2, logger=None)
     def meta_rpc_method(self, method:str, parameters:List, relay:bool=True) -> dict:
         post_data = self.request_body_builder(method, parameters)
@@ -144,7 +72,8 @@ class TestClient:
         if 'error' in result:
             raise ValueError(result['error']['message'])
         if type(result['result']) is dict:
-            if 'exception' in result['result']:
+            if 'exception' in result['result'] and result['result']['exception'] != None:
+                print(post_data)
                 print(result)
                 raise ValueError(result['result']['exception'])
             if relay and 'tx' in result['result']:
@@ -156,6 +85,7 @@ class TestClient:
     def print_previous_result(self):
         print(self.previous_result)
     
+    @retry(RequestExceptions, tries=2, logger=None)
     def sendrawtransaction(self, transaction:str):
         """
         :param transaction: result['tx']. e.g. "ALmNfAb4lqIAAA...="
@@ -176,16 +106,17 @@ class TestClient:
             raise ValueError(f'Failed to open wallet {path} with given password.')
         return open_wallet_raw_result
     
-    def invokefunction(self, scripthash:Hash160Str, operation:str,
-                       params:List[Union[str, int, Hash160Str, UInt160]], signers:List[Signer]=None) -> dict:
-        def parse_params(param: Union[str, int, Hash160Str, UInt160]) -> Dict[str, str]:
+    def invokefunction(self, operation:str, params:List[Union[str, int, Hash160Str, UInt160]] = None,
+                       signers:List[Signer]=None, result_interpreted_as_iterator = False) -> dict:
+        scripthash = self.contract_scripthash
+        def parse_params(param: Union[str, int, Hash160Str, UInt160, bytes]) -> Dict[str, str]:
             type_param = type(param)
             if type_param is UInt160:
                 return {
                     'type': 'Hash160',
                     'value': str(Hash160Str.from_UInt160(param)),
                 }
-            if type_param is Hash160Str:
+            elif type_param is Hash160Str:
                 return {
                     'type':'Hash160',
                     'value':str(param),
@@ -200,6 +131,13 @@ class TestClient:
                     'type': 'String',
                     'value': param,
                 }
+            elif type_param is bytes:
+                if param.endswith(b'='):
+                    # not the best way to judge, but maybe no better method
+                    return {
+                        'type':'String',
+                        'value':param.decode(),
+                    }
             else:
                 raise ValueError(f'Unable to handle param {param} with type {type_param}')
         if not params:
@@ -212,7 +150,11 @@ class TestClient:
             list(map(lambda param: parse_params(param), params)),
             list(map(lambda signer: signer.to_dict(), signers)),
         ]
-        return self.meta_rpc_method('invokefunction', parameters)
+        result = self.meta_rpc_method('invokefunction', parameters)
+        if result_interpreted_as_iterator:
+            result = result['result']['stack'][0]['iterator']
+            self.previous_result = result
+        return result
     
     def sendfrom(self, asset_id:Hash160Str, from_address:str, to_address:str, value:int, signers:List[Signer]=None):
         """

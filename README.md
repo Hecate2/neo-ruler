@@ -113,6 +113,10 @@ function flashFee
 - `repay` unit test
 - `collect` unit test
 
+#### Known Issues
+
+- Different rulers may deploy rToken contracts of the same `Pair(collateral, paired, expiry, mint_ratio)`. The ruler who deploys the rToken later would run into error: `Contract Already Exists: {contract_hash}`. A potential idea to resolve the conflict, is to add ruler's executing_script_hash into the name of rToken manifest. However, this method results in `'0x05' is invalid within a JSON string. The string should be correctly escaped. `, because executing_script_hash is not valid string.
+
 #### Difficulties
 
 Currently the Python SDK `neo-mamba` does not support wallet for testing. Meanwhile, RPC-based tests on private chains do not support relaying transactions to the block chain, so any execution of contract does not take effect on the blockchain.
@@ -126,5 +130,3 @@ no support for returning multiple values
 Automated tests: difficult to be implemented in Python
 
 - Cannot use wallet with Python SDK
-- Cannot relay transaction to blockchain with RPC'
-- Trying to utilize test engines provided by compiler
