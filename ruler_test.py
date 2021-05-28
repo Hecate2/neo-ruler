@@ -2,6 +2,7 @@ from neo_test_with_vm import TestEngine
 
 from neo3.core.types import UInt160
 from neo3 import settings
+from neo3.network.payloads import Signer, WitnessScope
 from neo3.vm import IntegerStackItem, VMState
 import datetime, time
 from neo3.contracts import NeoToken, GasToken
@@ -29,14 +30,15 @@ a_collateral = list(engine.previous_processed_result.keys())[0][len('collaterals
 engine.invoke_method_with_print("getPairsMap", params=[UInt160.deserialize_from_bytes(a_collateral)], result_interpreted_as_iterator=True)
 assert b'pairs' + a_collateral in list(engine.previous_processed_result.keys())[0]
 engine.invoke_method_with_print('getPairAttributes', params=[list(engine.previous_processed_result.values())[0]], result_interpreted_as_iterator=True)
-# The following codes require wallet support from neo-mamba
+
 engine.set_NEP17_token_balance(neo, contract_owner_hash)
 engine.set_NEP17_token_balance(gas, contract_owner_hash)
 engine.invoke_method_of_arbitrary_contract(neo.hash, 'balanceOf', [contract_owner_hash])
 print('invoke method balanceOf my NEO:'); engine.print_results()
 engine.invoke_method_of_arbitrary_contract(gas.hash, 'balanceOf', [contract_owner_hash])
 print('invoke method balanceOf my GAS:'); engine.print_results()
-engine.invoke_method_with_print("deposit", params=[neo.hash, gas.hash, _30_days_later_ending_milisecond, mint_ratio, 1], signers=[contract_owner_hash])
+engine.invoke_method_with_print("deposit", params=[neo.hash, gas.hash, _30_days_later_ending_milisecond, mint_ratio, 1],
+                                signers=[Signer(UInt160.from_string(contract_owner_hash), WitnessScope.GLOBAL)])
 
 consensus_script_hash = str(Hash160Str.from_UInt160(UInt160.deserialize_from_bytes(b'\xc0\x00\xdd\xe5TSvr1\xd9\xf9\x0b\xb4\xb9\xd5j\xa2x\xccU')))
 engine.invoke_method_of_arbitrary_contract(neo.hash, 'balanceOf', [consensus_script_hash])

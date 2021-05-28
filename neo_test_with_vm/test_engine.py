@@ -57,10 +57,18 @@ class TestEngine:
         return self.previous_engine.snapshot
     
     @property
+    def snapshot_storage(self):
+        return self.snapshot.storages._db.db['storages']
+    
+    @property
+    def snapshot_contracts(self):
+        return self.snapshot.storages._db.db['contracts']
+    
+    @property
     def result_stack(self):
         return self.previous_engine.result_stack
     
-    def __init__(self, nef_path: str, manifest_path: str = '', signers: List[Union[str, UInt160]] = None,
+    def __init__(self, nef_path: str, manifest_path: str = '', signers: List[Union[str, UInt160, payloads.Signer]] = None,
                  scope: payloads.WitnessScope = payloads.WitnessScope.CALLED_BY_ENTRY):
         """
         Only the contract specified in __init__ can be tested. You can deploy more contracts to be called by the tested
@@ -124,6 +132,8 @@ class TestEngine:
         type_signer = type(signer)
         if type_signer is str and len(signer) == 40:
             return payloads.Signer(types.UInt160.from_string(signer), scope)
+        elif type_signer is payloads.Signer:
+            return signer
         elif type_signer is UInt160:
             return payloads.Signer(signer, scope)
         else:
@@ -142,19 +152,19 @@ class TestEngine:
     def bytes_to_int(bytes_: bytes):
         return int.from_bytes(bytes_, byteorder='little', signed=False)
 
-    def invoke_method(self, method: str, params: List = None, signers: List[Union[str, UInt160]] = None,
+    def invoke_method(self, method: str, params: List = None, signers: List[Union[str, UInt160, payloads.Signer]] = None,
                       scope: payloads.WitnessScope = payloads.WitnessScope.CALLED_BY_ENTRY,
                       engine: ApplicationEngine = None, with_print=False) -> ApplicationEngine:
         if with_print:
             return self.invoke_method_with_print(method, params, signers, scope, engine)
         return self.invoke_method_of_arbitrary_contract(self.contract.hash, method, params, signers, scope, engine)
 
-    def invoke_method_with_print(self, method: str, params: List = None, signers: List[Union[str, UInt160]] = None,
+    def invoke_method_with_print(self, method: str, params: List = None, signers: List[Union[str, UInt160, payloads.Signer]] = None,
                                  scope: payloads.WitnessScope = payloads.WitnessScope.CALLED_BY_ENTRY,
                                  engine: ApplicationEngine = None, result_interpreted_as_hex=False,
                                  result_interpreted_as_iterator=False) -> ApplicationEngine:
         if not signers:
-            signers = []
+            signers = self.signers
         print(f'invoke method {method}:')
         executed_engine = self.invoke_method(method, params, signers, scope, engine)
         if executed_engine.state == executed_engine.state.FAULT:
@@ -164,7 +174,7 @@ class TestEngine:
         return executed_engine
 
     def invoke_method_of_arbitrary_contract(self, contract_hash: UInt160, method: str, params: List = None,
-                      signers: List[Union[str, UInt160]] = None,
+                      signers: List[Union[str, UInt160, payloads.Signer]] = None,
                       scope: payloads.WitnessScope = payloads.WitnessScope.CALLED_BY_ENTRY,
                       engine: ApplicationEngine = None):
         if params is None:
