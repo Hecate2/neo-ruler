@@ -4,9 +4,8 @@ import json
 import requests
 from neo_test_with_rpc.retry import retry, RetryExhausted
 
-from utils import Hash160Str, Signer
+from utils import Hash160Str, Signer, ClientResultInterpreter
 from neo3.core.types import UInt160
-from neo3.core.serialization import BinaryReader
 from neo3.contracts import NeoToken, GasToken
 neo, gas = NeoToken(), GasToken()
 
@@ -16,7 +15,7 @@ RequestExceptions=(
     requests.HTTPError,
     requests.Timeout,
     )
-request_timeout = 20
+request_timeout = None  # 20
 
 
 class TestClient:
@@ -106,9 +105,9 @@ class TestClient:
             raise ValueError(f'Failed to open wallet {path} with given password.')
         return open_wallet_raw_result
     
-    def invokefunction(self, operation:str, params:List[Union[str, int, Hash160Str, UInt160]] = None,
-                       signers:List[Signer]=None, result_interpreted_as_iterator = False) -> dict:
-        scripthash = self.contract_scripthash
+    def invokefunction_of_any_contract(self, scripthash: Hash160Str, operation:str,
+                        params:List[Union[str, int, Hash160Str, UInt160]] = None,
+                        signers:List[Signer]=None, result_interpreted_as_iterator = False) -> dict:
         def parse_params(param: Union[str, int, Hash160Str, UInt160, bytes]) -> Dict[str, str]:
             type_param = type(param)
             if type_param is UInt160:
@@ -118,8 +117,8 @@ class TestClient:
                 }
             elif type_param is Hash160Str:
                 return {
-                    'type':'Hash160',
-                    'value':str(param),
+                    'type': 'Hash160',
+                    'value': str(param),
                 }
             elif type_param is int:
                 return {
@@ -135,11 +134,12 @@ class TestClient:
                 if param.endswith(b'='):
                     # not the best way to judge, but maybe no better method
                     return {
-                        'type':'String',
-                        'value':param.decode(),
+                        'type': 'String',
+                        'value': param.decode(),
                     }
             else:
                 raise ValueError(f'Unable to handle param {param} with type {type_param}')
+    
         if not params:
             params = []
         if not signers:
@@ -155,6 +155,11 @@ class TestClient:
             result = result['result']['stack'][0]['iterator']
             self.previous_result = result
         return result
+
+    def invokefunction(self, operation:str, params:List[Union[str, int, Hash160Str, UInt160]] = None,
+                       signers:List[Signer]=None, result_interpreted_as_iterator = False) -> dict:
+        return self.invokefunction_of_any_contract(self.contract_scripthash, operation, params,
+                       signers, result_interpreted_as_iterator)
     
     def sendfrom(self, asset_id:Hash160Str, from_address:str, to_address:str, value:int, signers:List[Signer]=None):
         """
@@ -194,3 +199,8 @@ class TestClient:
     
     def get_gas_balance(self) -> int:
         return self.getwalletbalance(Hash160Str.from_UInt160(GasToken().hash))
+    
+    def get_rToken_balance(self, rToken_address: Hash160Str):
+        raw_result = self.invokefunction_of_any_contract(rToken_address, "balanceOf", [self.wallet_scripthash])
+        self.previous_result = raw_result
+        return int(raw_result['result']['stack'][0]['value'])

@@ -4,6 +4,7 @@ from enum import Enum
 import base64
 import time
 import datetime
+from math import ceil
 from neo3.core.types import UInt160
 
 
@@ -60,12 +61,20 @@ class Hash160Str(HashStr):
         return UInt160.from_string(self.string)
     
 
-def gen_expiry_timestamp_and_str(days) -> Tuple[int, str]:
+def gen_expiry_timestamp_and_str(days: int) -> Tuple[int, str]:
     today = datetime.date.today()
     days_later = today + datetime.timedelta(days=days)
     days_later_ending_milisecond = (int(time.mktime(time.strptime(str(days_later), '%Y-%m-%d')) + 86400) * 1000 - 1)
     days_later_date_str = days_later.strftime('%m_%d_%Y')
     return days_later_ending_milisecond, days_later_date_str
+
+
+def gen_expiry_timestamp_and_str_in_seconds(seconds: int) -> Tuple[int, str]:
+    current_time = time.time()
+    today = datetime.date.fromtimestamp(current_time)
+    seconds_later = today + datetime.timedelta(seconds=seconds)
+    seconds_later_date_str = seconds_later.strftime('%m_%d_%Y')
+    return ceil((current_time + seconds) * 1000), seconds_later_date_str
 
 
 class WitnessScope(Enum):
@@ -149,3 +158,5 @@ class ClientResultInterpreter:
 if __name__ == '__main__':
     print('30 days:', gen_expiry_timestamp_and_str(30))
     print(' 0 days:', gen_expiry_timestamp_and_str(0))
+    print('time now:', time.time() * 1000)
+    print(' 5 secs:', gen_expiry_timestamp_and_str_in_seconds(5))
