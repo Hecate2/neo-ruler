@@ -214,10 +214,10 @@ def _getRTokenAmtFromColAmt(_colAmt: int, _col: UInt160, _paired: UInt160, _mint
     collateral_token_decimals = call_contract(_col, "decimals")
     delta_decimals = cast(int, parity_token_decimals) - cast(int, collateral_token_decimals)
     if delta_decimals >= 0:
-        return _colAmt * (10 ** delta_decimals)
+        return _colAmt * _mintRatio * (10 ** delta_decimals)
     else:
         delta_decimals = -delta_decimals
-        return _colAmt // (10 ** delta_decimals)
+        return _colAmt * _mintRatio // (10 ** delta_decimals)
         # is // a good choice?
         # TODO: consider / instead of //
 
@@ -227,10 +227,10 @@ def _getColAmtFromRTokenAmt(_rTokenAmt: int, _col: UInt160, _rToken: UInt160, _m
     collateral_token_decimals = call_contract(_col, "decimals")
     delta_decimals = cast(int, collateral_token_decimals) - cast(int, r_token_decimals)
     if delta_decimals >= 0:
-        return _rTokenAmt * (10 ** delta_decimals)
+        return _rTokenAmt * (10 ** delta_decimals) // _mintRatio
     else:
         delta_decimals = -delta_decimals
-        return _rTokenAmt // (10 ** delta_decimals)
+        return _rTokenAmt // (_mintRatio * 10 ** delta_decimals)
         # is // a good choice?
         # TODO: consider / instead of //
 
@@ -274,12 +274,12 @@ def repay(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mint
     pair = _get_pair_with_assertion(_col, _paired, _expiry, _mintRatio)
     _validateDepositInputs(pair)
 
-    call_contract(_paired, "transfer", [invoker, executing_script_hash, _rrTokenAmt, "Transfer from caller to Ruler"])
+    assert call_contract(_paired, "transfer", [invoker, executing_script_hash, _rrTokenAmt, "Transfer from caller to Ruler"])
     rrToken_address = cast(UInt160, get_pair_attribute(pair, "rrToken"))
     call_contract(rrToken_address, "burnByRuler", [invoker, _rrTokenAmt])
 
     colAmountToPay = _getColAmtFromRTokenAmt(_rrTokenAmt, _col, cast(UInt160, get_pair_attribute(pair, "rcToken")), get_pair_attribute(pair, "mintRatio").to_int())
-    call_contract(_col, "transfer", [executing_script_hash, invoker, colAmountToPay, "Transfer from Ruler to caller"])
+    assert call_contract(_col, "transfer", [executing_script_hash, invoker, colAmountToPay, "Transfer from Ruler to caller"])
 
 
 @public

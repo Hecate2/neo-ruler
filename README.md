@@ -116,10 +116,10 @@ function flashFee
 #### Known Issues
 
 - Different rulers may deploy rToken contracts of the same `Pair(collateral, paired, expiry, mint_ratio)`. The ruler who deploys the rToken later would run into error: `Contract Already Exists: {contract_hash}`. A potential idea to resolve the conflict, is to add ruler's executing_script_hash into the name of rToken manifest. However, this method results in `'0x05' is invalid within a JSON string. The string should be correctly escaped. `, because executing_script_hash is not valid string.
+- Precision of computation: repaying a little bit of GAS leads to 0 NEO returned. Possible solution: increase number of decimals, and require the returned number of tokens as integer. Meanwhile, large integers may lead to unexpected results, but this might have been fixed in the latest version of `neo-vm`.
+- It's VERY DIFFICULT to interpret the raw results returned from the contract. There has to be an SDK for users. 
 
 #### Difficulties
-
-Currently the Python SDK `neo-mamba` does not support wallet for testing. Meanwhile, RPC-based tests on private chains do not support relaying transactions to the block chain, so any execution of contract does not take effect on the blockchain.
 
 no float support; no arithmetic division `/` support for now
 
@@ -127,6 +127,4 @@ no contract inheritance in Python
 
 no support for returning multiple values
 
-Automated tests: difficult to be implemented in Python
-
-- Cannot use wallet with Python SDK
+Cannot use wallet with Python SDK

@@ -1,4 +1,4 @@
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, Any
 from enum import Enum
 
 import base64
@@ -106,11 +106,7 @@ class Signer:
         }
 
 
-class ClientResultInterpreter:
-    @staticmethod
-    def interpret_raw_result_as_iterator(result):
-        return result['result']['stack'][0]['iterator']
-    
+class ResultInterpreter:
     @staticmethod
     def bytes_to_int(bytes_: bytes):
         return int.from_bytes(bytes_, byteorder='little', signed=False)
@@ -119,6 +115,43 @@ class ClientResultInterpreter:
     def bytes_to_Hash160str(bytestring: bytes):
         return Hash160Str.from_UInt160(UInt160.deserialize_from_bytes(bytestring))
 
+
+class EngineResultInterpreter(ResultInterpreter):
+    @staticmethod
+    def interpret_getCollaterals(collaterals: Dict[bytes, bytes]) -> Dict[Hash160Str, int]:
+        result_dict = dict()
+        len_collaterals = len(b'collaterals')
+        for k, v in zip(collaterals.keys(), collaterals.values()):
+            result_dict[EngineResultInterpreter.bytes_to_Hash160str(k[len_collaterals:])] = EngineResultInterpreter.bytes_to_int(v)
+        return result_dict
+    
+    @staticmethod
+    def interpret_getPairsMap(pairsMap: Dict[bytes, bytes]) -> Dict[int, Hash160Str]:
+        pairs = dict()
+        for k, v in zip(pairsMap.keys(), pairsMap.values()):
+            paired_token_address_bytes = k[(len(b'pairs') + 21):]
+            pairs[EngineResultInterpreter.bytes_to_int(v)] \
+                = EngineResultInterpreter.bytes_to_Hash160str(paired_token_address_bytes)
+        return pairs
+
+    @staticmethod
+    def interpret_getPairAttribtutes(Pair: Dict[bytes, bytes]) -> Dict[str, Any]:
+        pair_attributes = dict()
+        for k, v in zip(Pair.keys(), Pair.values()):
+            attribute_name = k.split(b'_')[2].decode()
+            if 'Token' in attribute_name:
+                attribute_value = EngineResultInterpreter.bytes_to_Hash160str(v)
+            else:
+                attribute_value = ClientResultInterpreter.bytes_to_int(v)
+            pair_attributes[attribute_name] = attribute_value
+        return pair_attributes
+
+
+class ClientResultInterpreter(ResultInterpreter):
+    @staticmethod
+    def interpret_raw_result_as_iterator(result):
+        return result['result']['stack'][0]['iterator']
+    
     @staticmethod
     def base64_struct_to_bytestrs(base64_struct: dict) -> List[bytes]:
         processed_struct = []

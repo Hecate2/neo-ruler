@@ -1,8 +1,10 @@
 import json
 import os
 from functools import partial
-from typing import List, Union, Tuple, Any, cast
+from typing import List, Union, Tuple, Any, cast, Callable
 from math import log
+
+from utils import Hash160Str
 
 from neo3 import vm, contracts, blockchain
 from neo3.contracts import ApplicationEngine, interop
@@ -69,7 +71,7 @@ class TestEngine:
         return self.previous_engine.result_stack
     
     def __init__(self, nef_path: str, manifest_path: str = '', signers: List[Union[str, UInt160, payloads.Signer]] = None,
-                 scope: payloads.WitnessScope = payloads.WitnessScope.CALLED_BY_ENTRY):
+                 scope: payloads.WitnessScope = payloads.WitnessScope.GLOBAL):
         """
         Only the contract specified in __init__ can be tested. You can deploy more contracts to be called by the tested
         contract.
@@ -117,18 +119,24 @@ class TestEngine:
     @staticmethod
     def param_auto_checker(param: Any) -> Any:
         type_param = type(param)
-        if type_param is str:
+        if type_param is Hash160Str:
+            return types.UInt160.from_string(str(param)[2:]).to_array()
+        elif type_param is str:
             if len(param) == 40:
                 return types.UInt160.from_string(param).to_array()
             elif len(param) == 42 and param.startswith('0x'):
                 return types.UInt160.from_string(param[2:]).to_array()
-        if type_param is UInt160:
+            else:
+                return param
+        elif type_param is UInt160:
             return param.to_array()
-        else:
+        elif type_param is int:
             return param
+        else:
+            raise ValueError(f'Unable to handle param {param} with type {type_param}')
     
     @staticmethod
-    def signer_auto_checker(signer: Union[str, UInt160], scope: payloads.WitnessScope) -> payloads.Signer:
+    def signer_auto_checker(signer: Union[str, UInt160, payloads.Signer], scope: payloads.WitnessScope) -> payloads.Signer:
         type_signer = type(signer)
         if type_signer is str and len(signer) == 40:
             return payloads.Signer(types.UInt160.from_string(signer), scope)
@@ -153,16 +161,16 @@ class TestEngine:
         return int.from_bytes(bytes_, byteorder='little', signed=False)
 
     def invoke_method(self, method: str, params: List = None, signers: List[Union[str, UInt160, payloads.Signer]] = None,
-                      scope: payloads.WitnessScope = payloads.WitnessScope.CALLED_BY_ENTRY,
+                      scope: payloads.WitnessScope = payloads.WitnessScope.GLOBAL,
                       engine: ApplicationEngine = None, with_print=False) -> ApplicationEngine:
         if with_print:
             return self.invoke_method_with_print(method, params, signers, scope, engine)
         return self.invoke_method_of_arbitrary_contract(self.contract.hash, method, params, signers, scope, engine)
 
     def invoke_method_with_print(self, method: str, params: List = None, signers: List[Union[str, UInt160, payloads.Signer]] = None,
-                                 scope: payloads.WitnessScope = payloads.WitnessScope.CALLED_BY_ENTRY,
+                                 scope: payloads.WitnessScope = payloads.WitnessScope.GLOBAL,
                                  engine: ApplicationEngine = None, result_interpreted_as_hex=False,
-                                 result_interpreted_as_iterator=False) -> ApplicationEngine:
+                                 result_interpreted_as_iterator=False, further_interpreter:Callable = None) -> ApplicationEngine:
         if not signers:
             signers = self.signers
         print(f'invoke method {method}:')
@@ -170,12 +178,12 @@ class TestEngine:
         if executed_engine.state == executed_engine.state.FAULT:
             print(f'engine fault from method "{method}":')
             print(executed_engine.exception_message)
-        self.print_results(executed_engine, result_interpreted_as_hex, result_interpreted_as_iterator)
+        self.print_results(executed_engine, result_interpreted_as_hex, result_interpreted_as_iterator, further_interpreter)
         return executed_engine
 
     def invoke_method_of_arbitrary_contract(self, contract_hash: UInt160, method: str, params: List = None,
                       signers: List[Union[str, UInt160, payloads.Signer]] = None,
-                      scope: payloads.WitnessScope = payloads.WitnessScope.CALLED_BY_ENTRY,
+                      scope: payloads.WitnessScope = payloads.WitnessScope.GLOBAL,
                       engine: ApplicationEngine = None):
         if params is None:
             params = []
@@ -206,7 +214,7 @@ class TestEngine:
         return engine
 
     def analyze_results(self, engine: ApplicationEngine = None, result_interpreted_as_hex=False,
-                        result_interpreted_as_iterator=False) -> Tuple[vm.VMState, Any]:
+                        result_interpreted_as_iterator=False, further_interpreter:Callable = None) -> Tuple[vm.VMState, Any]:
         if not engine:
             engine = self.previous_engine
         if not engine.result_stack:
@@ -221,12 +229,15 @@ class TestEngine:
                 processed_result[k.key] = v.value
         else:
             processed_result = str(result)
+        if further_interpreter:
+            processed_result = further_interpreter(processed_result)
         self.previous_processed_result = processed_result
         return engine.state, processed_result
     
     def print_results(self, engine: ApplicationEngine = None, result_interpreted_as_hex=False,
-                      result_interpreted_as_iterator=False) -> None:
-        state, result = self.analyze_results(engine, result_interpreted_as_hex, result_interpreted_as_iterator)
+                      result_interpreted_as_iterator=False, further_interpreter:Callable = None) -> None:
+        state, result = self.analyze_results(engine,
+                        result_interpreted_as_hex, result_interpreted_as_iterator, further_interpreter)
         print(state, result)
     
     def reset_environment(self):
@@ -258,6 +269,12 @@ class TestEngine:
                                       self.Number_Prefix + self.int_to_bytes(amount, bytes_needed=bytes_needed))
         engine.snapshot.commit()
         self.previous_engine = engine
+        
+    def get_rToken_balance(self, rToken_address: Union[Hash160Str, UInt160, str], owner: Union[Hash160Str, UInt160, str]):
+        type_rToken_address = type(rToken_address)
+        if type_rToken_address is Hash160Str or type_rToken_address is str:
+            rToken_address = types.UInt160.from_string(str(rToken_address)[2:])
+        self.invoke_method_of_arbitrary_contract(rToken_address, "balanceOf", [owner])
         
     def __repr__(self):
         return f'class TestEngine: {self.state} {self.previous_processed_result}'
