@@ -61,15 +61,15 @@ print('rcToken balance:', rcToken_before_deposit)
 rrToken_before_deposit = dev_client.get_rToken_balance(attributes['rrToken'])
 print('rrToken balance:', rrToken_before_deposit)
 
-# dev_client.invokefunction("deposit",
-#     params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 1],
-#     signers=[Signer(dev_wallet_hash, WitnessScope.Global)])  # CalledByEntry does not take effect
-# dev_client.print_previous_result()
-#
-# dev_client.invokefunction("deposit",
-#     params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 10],
-#     signers=[Signer(dev_wallet_hash, WitnessScope.Global)])
-# dev_client.print_previous_result()
+dev_client.invokefunction("deposit",
+    params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 1],
+    signers=[Signer(dev_wallet_hash, WitnessScope.Global)])  # CalledByEntry does not take effect
+dev_client.print_previous_result()
+
+dev_client.invokefunction("deposit",
+    params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 10],
+    signers=[Signer(dev_wallet_hash, WitnessScope.Global)])
+dev_client.print_previous_result()
 
 dev_client.invokefunction("repay",
     params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 1099999980],

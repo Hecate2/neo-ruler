@@ -282,12 +282,16 @@ def repay(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mint
     assert call_contract(_col, "transfer", [executing_script_hash, invoker, colAmountToPay, "Transfer from Ruler to caller"])
 
 
-@public
-def burn_rrToken_after_expiry(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _rrTokenAmt: int):
-    pair = _get_pair_with_assertion(_col, _paired, _expiry, _mintRatio)
-    assert get_time > _expiry, "You can only burn your rrToken after the loan expires"
-    rrToken_address = cast(UInt160, get_pair_attribute(pair, "rrToken"))
-    call_contract(rrToken_address, "burnByRuler", [invoker, _rrTokenAmt])
+# @public
+# def burn_rrToken_after_expiry(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _rrTokenAmt: int):
+#     """
+#     This method will not be included in the formal contract, because the totalSupply of rrToken after expiry is used
+#         to computed defaulted loans
+#     """
+#     pair = _get_pair_with_assertion(_col, _paired, _expiry, _mintRatio)
+#     assert get_time > _expiry, "You can only burn your rrToken after the loan expires"
+#     rrToken_address = cast(UInt160, get_pair_attribute(pair, "rrToken"))
+#     call_contract(rrToken_address, "burnByRuler", [invoker, _rrTokenAmt])
 
 
 @public
@@ -379,7 +383,8 @@ def _createRToken(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str
 @public
 def addPair(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str, _mintRatio: int, _mintRatioStr: str, _feeRate: int) -> int:
     """
-    add a new Ruler Pair
+    add a new Ruler Pair. It is not bad for all the users to utilize this method.
+        Not necessary to limit the permission to the administrator of ruler.
     :param _col: collateral token address
     :param _paired: paired token address
     :param _expiry: expiry timestamp
@@ -439,10 +444,10 @@ def addPair(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str, _min
 #     return False
 
 
-def flashFee(_token: UInt160, _amount: int) -> int:
-    global minColRatioMap
-    assert minColRatioMap.get(_token).to_int() > 0, 'RulerCore: token not supported'
-    return _amount * flashLoanRate // 100_000_000
+# def flashFee(_token: UInt160, _amount: int) -> int:
+#     global minColRatioMap
+#     assert minColRatioMap.get(_token).to_int() > 0, 'RulerCore: token not supported'
+#     return _amount * flashLoanRate // 100_000_000
 
 
 """

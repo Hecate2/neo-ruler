@@ -1,4 +1,4 @@
-from typing import Tuple, List, Dict, Any
+from typing import Tuple, List, Dict, Any, Union
 from enum import Enum
 
 import base64
@@ -187,6 +187,12 @@ class ClientResultInterpreter(ResultInterpreter):
                 attribute_value = ClientResultInterpreter.bytes_to_int(attribute[1])
             pair_attributes[attribute_name] = attribute_value
         return pair_attributes
+
+
+def sleep_until(timestamp: Union[int, float], accuracy = 0.5):
+    while time.time() < timestamp:
+        time.sleep(accuracy)
+
 
 if __name__ == '__main__':
     print('30 days:', gen_expiry_timestamp_and_str(30))

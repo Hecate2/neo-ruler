@@ -113,11 +113,26 @@ function flashFee
 - `repay` unit test
 - `collect` unit test
 
-#### Known Issues
+#### Known Problems
 
 - Different rulers may deploy rToken contracts of the same `Pair(collateral, paired, expiry, mint_ratio)`. The ruler who deploys the rToken later would run into error: `Contract Already Exists: {contract_hash}`. A potential idea to resolve the conflict, is to add ruler's executing_script_hash into the name of rToken manifest. However, this method results in `'0x05' is invalid within a JSON string. The string should be correctly escaped. `, because executing_script_hash is not valid string.
-- Precision of computation: repaying a little bit of GAS leads to 0 NEO returned. Possible solution: increase number of decimals, and require the returned number of tokens as integer. Meanwhile, large integers may lead to unexpected results, but this might have been fixed in the latest version of `neo-vm`.
+- Precision of computation: repaying a little bit of GAS leads to 0 NEO returned. Possible solution: increase number of decimals, and require the returned number of tokens as integer. Also, What if we want the mint ratio as a float?
+- Large integers may lead to unexpected results, but this might have been fixed in the latest version of `neo-vm`.
 - It's VERY DIFFICULT to interpret the raw results returned from the contract. There has to be an SDK for users. 
+
+#### Issues to be discussed
+
+- Shall fees be levied? Who receives the fee?
+- Permission of management APIs ?
+- Is it necessary to store representation strings (e.g. `expiry_str` and `mint_ratio_str`) in the contract?
+
+#### Potential new features
+
+- flashLoan: borrower get actual paired tokens instead of rTokens. Fees charged.
+- mmDeposit: market make deposit: deposit paired token into ruler to receive rcToken immediately. Fees?
+- redeem: give rrTokens and rcTokens to the ruler before expiry to receive collateral. Fees charged.
+- RULER token and liquidity mining
+- xRULER token
 
 #### Difficulties
 
@@ -132,7 +147,7 @@ Cannot use wallet with Python SDK
 #### Testing tactics
 
 - VM-based
-  - Use `ruler_test.py` to run scripts on `neo3vm`
+  - Use `ruler_test.py` to run scripts on `neo3vm`, utilizing `neo-mamba`.
   - Pros:
     - easily set the environment on the chain
     - faster execution
