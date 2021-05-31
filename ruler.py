@@ -108,9 +108,10 @@ def manifest_metadata() -> NeoMetadata:
 
 @public
 def onNEP17Payment(_from_address: UInt160, _amount: int, _data: Any):
-    if _data != "Transfer from caller to Ruler" and _data != "Transfer from Ruler to caller":
-        # just a mechanism to prevent accidental wrong payment
-        abort()
+    pass  # do nothing for now
+    # if _data != "Transfer from caller to Ruler" and _data != "Transfer from Ruler to caller":
+    #     # just a mechanism to prevent accidental wrong payment
+    #     abort()
 
 
 '''
@@ -198,8 +199,13 @@ def deposit(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mi
     colTotal_key = gen_pair_key(pair, "colTotal")
     pair_map.put(colTotal_key, pair_map.get(colTotal_key).to_int() + _colAmt)
     mintAmount = _getRTokenAmtFromColAmt(_colAmt, _col, _paired, _mintRatio)
-    call_contract(cast(UInt160, get_pair_attribute(pair, "rcToken")), "mint", [invoker, mintAmount])
-    call_contract(cast(UInt160, get_pair_attribute(pair, "rrToken")), "mint", [invoker, mintAmount])
+    rcToken_address = cast(UInt160, get_pair_attribute(pair, "rcToken"))
+    call_contract(rcToken_address, "mint", [invoker, mintAmount])
+    rrToken_address = cast(UInt160, get_pair_attribute(pair, "rrToken"))
+    call_contract(rrToken_address, "mint", [invoker, mintAmount])
+    # The following codes lead to 2 DROP instructions after System.Contract.Call, and there would be exception
+    # call_contract(cast(UInt160, get_pair_attribute(pair, "rcToken")), "mint", [invoker, mintAmount])
+    # call_contract(cast(UInt160, get_pair_attribute(pair, "rrToken")), "mint", [invoker, mintAmount])
     return True
 
 
@@ -213,7 +219,7 @@ def _getRTokenAmtFromColAmt(_colAmt: int, _col: UInt160, _paired: UInt160, _mint
         delta_decimals = -delta_decimals
         return _colAmt // (10 ** delta_decimals)
         # is // a good choice?
-        # TODO: consider / insetead of //
+        # TODO: consider / instead of //
 
 
 def _getColAmtFromRTokenAmt(_rTokenAmt: int, _col: UInt160, _rToken: UInt160, _mintRatio: int) -> int:
@@ -226,7 +232,7 @@ def _getColAmtFromRTokenAmt(_rTokenAmt: int, _col: UInt160, _rToken: UInt160, _m
         delta_decimals = -delta_decimals
         return _rTokenAmt // (10 ** delta_decimals)
         # is // a good choice?
-        # TODO: consider / insetead of //
+        # TODO: consider / instead of //
 
 
 def _validateDepositInputs(_pair: int):
@@ -269,7 +275,8 @@ def repay(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mint
     _validateDepositInputs(pair)
 
     call_contract(_paired, "transfer", [invoker, executing_script_hash, _rrTokenAmt, "Transfer from caller to Ruler"])
-    call_contract(cast(UInt160, get_pair_attribute(pair, "rrToken")), "burnByRuler", [invoker, _rrTokenAmt])
+    rrToken_address = cast(UInt160, get_pair_attribute(pair, "rrToken"))
+    call_contract(rrToken_address, "burnByRuler", [invoker, _rrTokenAmt])
 
     colAmountToPay = _getColAmtFromRTokenAmt(_rrTokenAmt, _col, cast(UInt160, get_pair_attribute(pair, "rcToken")), get_pair_attribute(pair, "mintRatio").to_int())
     call_contract(_col, "transfer", [executing_script_hash, invoker, colAmountToPay, "Transfer from Ruler to caller"])
@@ -279,7 +286,8 @@ def repay(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mint
 def burn_rrToken_after_expiry(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _rrTokenAmt: int):
     pair = _get_pair_with_assertion(_col, _paired, _expiry, _mintRatio)
     assert get_time > _expiry, "You can only burn your rrToken after the loan expires"
-    call_contract(cast(UInt160, get_pair_attribute(pair, "rrToken")), "burnByRuler", [invoker, _rrTokenAmt])
+    rrToken_address = cast(UInt160, get_pair_attribute(pair, "rrToken"))
+    call_contract(rrToken_address, "burnByRuler", [invoker, _rrTokenAmt])
 
 
 @public
@@ -296,9 +304,11 @@ def collect(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mi
     pair = _get_pair_with_assertion(_col, _paired, _expiry, _mintRatio)
     # assert cast(int, pair["mintRatio"]) != 0, "Ruler: pair does not exist"
     assert get_time > get_pair_attribute(pair, "expiry").to_int(), "Ruler: loan not expired"
-    call_contract(cast(UInt160, get_pair_attribute(pair, "rcToken")), "burnByRuler", [invoker, _rcTokenAmt])
+    rcToken_address = cast(UInt160, get_pair_attribute(pair, "rcToken"))
+    call_contract(rcToken_address, "burnByRuler", [invoker, _rcTokenAmt])
     
-    defaultedLoanAmt = cast(int, call_contract(cast(UInt160, get_pair_attribute(pair, "rrToken")), "totalSupply", []))
+    rrToken_address = cast(UInt160, get_pair_attribute(pair, "rrToken"))
+    defaultedLoanAmt = cast(int, call_contract(rrToken_address, "totalSupply", []))
     if defaultedLoanAmt == 0:
         _sendAmtPostFeesOptionalAccrue(invoker, cast(UInt160, get_pair_attribute(pair, "pairedToken")), _rcTokenAmt, get_pair_attribute(pair, "feeRate").to_int(), False)
     else:
