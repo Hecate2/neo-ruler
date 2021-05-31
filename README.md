@@ -128,3 +128,24 @@ no contract inheritance in Python
 no support for returning multiple values
 
 Cannot use wallet with Python SDK
+
+#### Testing tactics
+
+- VM-based
+  - Use `ruler_test.py` to run scripts on `neo3vm`
+  - Pros:
+    - easily set the environment on the chain
+    - faster execution
+  - Cons:
+    - No wallet support for now
+    - Cannot utilize the latest `neo-vm`
+    - Difficult to know the reason of exceptions raised from inside the `vm`
+- private-chain-based
+  - run a private chain with a consensus node and an outer node. The outer node accepts RPC requests from Python, and is run in a visual studio C# debugger with source codes of NEO.
+  - Assisted by [DumpNef](https://github.com/devhawk/DumpNef), you can relate the InstructionPointer of the vm to the bytecodes in `.nef` files and the original Python codes of contract.
+  - Pros:
+    - Easy to watch the internal procedures in the blockchain. Easy to detect errors.
+    - Almost the same as production environment
+  - Cons
+    - Harder to setup and reset the environment
+    - Slower execution; unknown time for the transaction to be relayed on the blockchain.
