@@ -164,3 +164,156 @@ Cannot use wallet with Python SDK
   - Cons
     - Harder to setup and reset the environment
     - Slower execution; unknown time for the transaction to be relayed on the blockchain.
+
+#### Tutorial: How to test your smart contract on the vm using `neo-mamba`
+
+Intuitively, you may want to deploy your smart contract onto your private blockchain, and test it via `neo-cli` commands manually, or via `RpcServer` plugin of `neo-cli` automatically. In fact, you do not always have to run a "real" blockchain to test your contract. The NEO virtual machine, as the backend of the blockchain's node, can execute the smart contract for you. Just follow these steps:
+
+1. Build a "virtual" blockchain snapshot as the environment for the vm, simply with 2 lines of codes.
+
+   ```python
+   from neo3 import blockchain
+   blockchain.Blockchain.__it__ = None  # This ensures your blockchain as a singleton object. Refer to:
+   # https://github.com/CityOfZion/neo-mamba/blob/873932c8cb25497b90a39b3e327572746764e699/neo3/network/convenience/singleton.py#L12
+   snapshot = blockchain.Blockchain(store_genesis_block=True).currentSnapshot
+   # blockchain is singleton
+   ```
+
+   This snapshot contains blocks (only the genesis block in our case), contracts deployed on the chain, the history of transactions, and the storage status of all the contracts. This snapshot of blockchain does not update itself automatically. Instead, we use a vm to execute contracts and interact with the chain.
+
+2. Build your vm, using your blockchain as the environment
+
+   ```python
+   from neo3 import vm, contracts
+   from neo3.network import payloads
+   tx = payloads.Transaction._serializable_init()
+   engine = ApplicationEngine(contracts.TriggerType.APPLICATION, tx, snapshot, 0, test_mode=True)
+   ```
+
+   Now you have an `engine` to run custom smart contracts. `tx` is an empty `container` for your execution of contract.
+
+3. Load your contract as a `Contract` object
+
+   Your compiler `neo3-boa` generates a `.nef` file and a `.manifest.json` file. Load them into your Python environment with:
+
+   ```python
+       @staticmethod
+       def read_raw_nef_and_raw_manifest(nef_path: str, manifest_path: str = '') -> Tuple[bytes, dict]:
+           with open(nef_path, 'rb') as f:
+               raw_nef = f.read()
+           if not manifest_path:
+               file_path, fullname = os.path.split(nef_path)
+               nef_name, _ = os.path.splitext(fullname)
+               manifest_path = os.path.join(file_path, nef_name + '.manifest.json')
+           with open(manifest_path, 'r') as f:
+               raw_manifest = json.loads(f.read())
+           return raw_nef, raw_manifest
+       
+       @staticmethod
+       def build_nef_and_manifest_from_raw(raw_nef: bytes, raw_manifest: dict) \
+               -> Tuple[contracts.NEF, contracts.manifest.ContractManifest]:
+           nef = contracts.NEF.deserialize_from_bytes(raw_nef)
+           manifest = contracts.manifest.ContractManifest.from_json(raw_manifest)
+           return nef, manifest
+   ```
+
+   With the `nef` object and `manifest` object returned by function `build_nef_and_manifest_from_raw`, you can build you contract object:
+
+   ```python
+   contract = contracts.ContractState(0, nef, manifest, 0, types.UInt160.deserialize_from_bytes(raw_nef))
+   ```
+
+   The first `0` is the designated id of the contract in the block chain (assure no two contracts of the same id in the blockchain), and the second `0` is the counter of how many times the contract has been updated (usually just leave this as `0`). The `types.UInt160.deserialize_from_bytes(raw_nef)` is a placeholder for the hash of this contract. Note that the expression does not really generate the correct hash of the contract!
+
+4. Deploy your contract
+
+   ```python
+   engine.snapshot.contracts.put(contract)
+   ```
+
+   A single line is enough for deploying.
+
+5. Build a script to call a method in your contract
+
+   First, you need a `ScriptBuilder`:
+
+   ```python
+   sb = vm.ScriptBuilder()
+   ```
+
+   Now you can build a script to call a method with arguments:
+
+   ```python
+   sb.emit_dynamic_call_with_args(contract.hash, method, params)
+   ```
+
+   or without arguments:
+
+   ```python
+   sb.emit_dynamic_call(contract.hash, method)
+   ```
+
+   Here, `method: str` is the name of the method in the contract you want to call, and `params: List[int, str, bytes, UInt160, ...]` is the arguments for the method. If an argument in your method is of type `UInt160`, you should always give `UInt160` type in `params`. `int`, `bytes` and `str` are not allowed. 
+
+   Note that you are just building script in the `sb` object. You should then let the engine load your script built in `sb`. 
+
+6. Load your script
+
+   ```python
+   engine.load_script(vm.Script(sb.to_array()))
+   ```
+
+7. Add signers
+
+   Signers are wallets who witness the transaction. This is a safety concern to prevent issues like your transferring another person's tokens into your wallet. Usually you can specify yourself as a signer like this:
+
+   ```python
+   from neo3.core import types
+   from neo3.core.types import UInt160
+   signers = [payloads.Signer(types.UInt160.from_string('your_wallet_scripthash'), payloads.WitnessScope.CalledByEntry)]
+   ```
+
+   And
+
+   ```python
+   engine.script_container.signers = signers
+   ```
+
+8. Execute your contract!
+
+   ```python
+   engine.execute()
+   ```
+
+9. Commit the execution to the snapshot
+
+   The execution of your contract should make effect on the blockchain, and in most cases you should persist this effect on the blockchain. So do not forget to commit the changes!
+
+   ```python
+   engine.snapshot.commit()
+   ```
+
+10. Watch the returned values of your method
+
+    ```
+    print(engine.state, str(engine.result_stack))
+    ```
+
+    A correct execution should result in `engine.state == VMState.HALT`. If you get `VMState.FAULT`, your engine probably have run into troubles.
+
+11. Continuously execute another method
+
+    Your blockchain has been changed because of the previous execution, and you should inherit the state of the blockchain from the previous engine. 
+
+    ```python
+    tx = payloads.Transaction._serializable_init()
+    new_engine = ApplicationEngine(contracts.TriggerType.APPLICATION, tx, engine.snapshot, 0, test_mode=True)
+    ```
+
+    Now your `new_engine` has obtained the state of the blockchain after the previous execution. Happy testing with your `new_engine`!
+
+12. The vm testing suite in this repository
+
+    Consider using this re-encapsulated engine to run your tests!
+
+    https://github.com/Hecate2/neo-ruler/blob/master/neo_test_with_vm/test_engine.py

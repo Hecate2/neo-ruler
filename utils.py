@@ -4,7 +4,7 @@ from enum import Enum
 import base64
 import time
 import datetime
-from math import ceil
+from math import ceil, log
 from neo3.core.types import UInt160
 
 
@@ -114,6 +114,15 @@ class ResultInterpreter:
     @staticmethod
     def bytes_to_Hash160str(bytestring: bytes):
         return Hash160Str.from_UInt160(UInt160.deserialize_from_bytes(bytestring))
+    
+    @staticmethod
+    def int_to_bytes(int_: int, bytes_needed: int = None):
+        if not bytes_needed:
+            bytes_needed = int(log(int_, 256)) + 1  # may be not accurate
+        try:
+            return int_.to_bytes(bytes_needed, 'little')
+        except OverflowError:
+            return int_.to_bytes(bytes_needed + 1, 'little')
 
 
 class EngineResultInterpreter(ResultInterpreter):
