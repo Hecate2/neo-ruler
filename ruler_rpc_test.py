@@ -1,9 +1,13 @@
+"""
+This test would never always succeed because we cannot know whether the transactions have been relayed on the chain
+"""
+
 from typing import Dict, List, Tuple
 import time
 
 from utils import Hash160Str, Signer, WitnessScope,\
     gen_expiry_timestamp_and_str, gen_expiry_timestamp_and_str_in_seconds,\
-    ClientResultInterpreter
+    ClientResultInterpreter, sleep_until
 from neo_test_with_rpc import TestClient
 from neo3.contracts import NeoToken, GasToken
 neo, gas = NeoToken(), GasToken()
@@ -11,7 +15,7 @@ neo, gas = NeoToken(), GasToken()
 target_url = 'http://127.0.0.1:23332'
 
 # make sure you deploy ruler.nef manually
-contract_hash = Hash160Str('0x84e2fb421cdffaa0558d64c9685ca7d39ed4ba58')
+contract_hash = Hash160Str('0xaf9abd7ba5bfb7dd17d70267ed09ec9d0876c814')
 
 consensus_wallet_address = 'NhSRQSzNv8BwjKwQn2Spk7tY194uxXiESv'
 consensus_wallet_hash = Hash160Str('0x113f10ed24f2b70115d37c103130a236b7011dec')
@@ -23,7 +27,10 @@ dev_signer = Signer(dev_wallet_hash, WitnessScope.CalledByEntry)
 
 administrating_client = TestClient(target_url, contract_hash, consensus_wallet_hash, consensus_wallet_address, 'consensus.json', '1')
 administrating_client.openwallet()
-expiry_timestamp, expiry_str = gen_expiry_timestamp_and_str(32)
+# expiry_timestamp, expiry_str = gen_expiry_timestamp_and_str(33)  # this works for deposit and repay
+expiry_timestamp, expiry_str = gen_expiry_timestamp_and_str_in_seconds(60)  # this does not work for deposit
+print(expiry_timestamp - time.time() * 1000)
+
 mint_ratio = 7
 fee_rate = 0
 try:
@@ -36,6 +43,7 @@ except ValueError as e:
 print()
 dev_client = TestClient(target_url, contract_hash, dev_wallet_hash, dev_wallet_address, 'dev.json', '1')
 dev_client.openwallet()
+time.sleep(15)
 neo_balance, gas_balance = dev_client.get_neo_balance(), dev_client.get_gas_balance()
 if neo_balance < 10 or gas_balance < 100e8:
     input(f'Warning: only f{neo_balance} NEOs and {gas_balance/1e8} left. \npress ENTER to continue')
@@ -67,11 +75,38 @@ dev_client.invokefunction("deposit",
 dev_client.print_previous_result()
 
 dev_client.invokefunction("deposit",
-    params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 10],
+    params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 100],
+    signers=[Signer(dev_wallet_hash, WitnessScope.Global)])
+dev_client.print_previous_result()
+
+time.sleep(15)
+
+print()
+print('check rcToken and rrToken balance after deposit:')
+rcToken_before_deposit = dev_client.get_rToken_balance(attributes['rcToken'])
+print('rcToken balance:', rcToken_before_deposit)
+rrToken_before_deposit = dev_client.get_rToken_balance(attributes['rrToken'])
+print('rrToken balance:', rrToken_before_deposit)
+
+dev_client.invokefunction("repay",
+    params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 700000000],
     signers=[Signer(dev_wallet_hash, WitnessScope.Global)])
 dev_client.print_previous_result()
 
 dev_client.invokefunction("repay",
-    params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 1099999980],
+    params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 1400000000],
+    signers=[Signer(dev_wallet_hash, WitnessScope.Global)])
+dev_client.print_previous_result()
+
+sleep_until(expiry_timestamp)
+time.sleep(15)
+
+dev_client.invokefunction("collect",
+    params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 700000000],
+    signers=[Signer(dev_wallet_hash, WitnessScope.Global)])
+dev_client.print_previous_result()
+
+dev_client.invokefunction("collect",
+    params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 2800000000],
     signers=[Signer(dev_wallet_hash, WitnessScope.Global)])
 dev_client.print_previous_result()

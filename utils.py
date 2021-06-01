@@ -73,7 +73,7 @@ def gen_expiry_timestamp_and_str_in_seconds(seconds: int) -> Tuple[int, str]:
     current_time = time.time()
     today = datetime.date.fromtimestamp(current_time)
     seconds_later = today + datetime.timedelta(seconds=seconds)
-    seconds_later_date_str = seconds_later.strftime('%m_%d_%Y')
+    seconds_later_date_str = seconds_later.strftime('%m_%d_%Y') + str(ceil(current_time)+seconds)
     return ceil((current_time + seconds) * 1000), seconds_later_date_str
 
 
@@ -189,7 +189,8 @@ class ClientResultInterpreter(ResultInterpreter):
         return pair_attributes
 
 
-def sleep_until(timestamp: Union[int, float], accuracy = 0.5):
+def sleep_until(timestamp_millisecond: Union[int, float], accuracy = 0.5):
+    timestamp = timestamp_millisecond / 1000
     while time.time() < timestamp:
         time.sleep(accuracy)
 

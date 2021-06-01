@@ -23,16 +23,13 @@ The loan is FUNGIBLE. Anyone can collateralize tokens to borrow paired tokens. A
 pair["colTotal"] is used to count all the rrTokens that have been minted; usually does not need to be reduced.
 """
 
-from typing import Any, List, Tuple, Union, Dict, Sequence, cast
+from typing import Any, cast
 from boa3.builtin.interop.iterator import Iterator
 
 from boa3.builtin import NeoMetadata, metadata, public
-from boa3.builtin.contract import Nep17TransferEvent, abort
-from boa3.builtin.interop.blockchain import get_contract
-from boa3.builtin.interop.contract import NEO, GAS, call_contract, create_contract
-from boa3.builtin.interop.runtime import calling_script_hash, check_witness, get_time, executing_script_hash
-from boa3.builtin.interop.storage import delete, get, put, find, StorageMap, get_context
-# from boa3.builtin.interop.crypto import sha256
+from boa3.builtin.interop.contract import call_contract, create_contract
+from boa3.builtin.interop.runtime import get_time, executing_script_hash
+from boa3.builtin.interop.storage import get, put, find, StorageMap, get_context
 from boa3.builtin.type import UInt160
 
 """
@@ -313,24 +310,26 @@ def collect(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mi
     
     rrToken_address = cast(UInt160, get_pair_attribute(pair, "rrToken"))
     defaultedLoanAmt = cast(int, call_contract(rrToken_address, "totalSupply", []))
+    
+    pairedToken_address = cast(UInt160, get_pair_attribute(pair, "pairedToken"))
     if defaultedLoanAmt == 0:
-        _sendAmtPostFeesOptionalAccrue(invoker, cast(UInt160, get_pair_attribute(pair, "pairedToken")), _rcTokenAmt, get_pair_attribute(pair, "feeRate").to_int(), False)
+        _sendAmtPostFeesOptionalAccrue(invoker, pairedToken_address, _rcTokenAmt, get_pair_attribute(pair, "feeRate").to_int(), False)
     else:
         mintRatio = get_pair_attribute(pair, "mintRatio").to_int()
         feeRate = get_pair_attribute(pair, "feeRate").to_int()
         rcTokensEligibleAtExpiry = _getRTokenAmtFromColAmt(get_pair_attribute(pair, "colTotal").to_int(), _col, _paired, mintRatio)
         
         pairedTokenAmtToCollect = _rcTokenAmt * (rcTokensEligibleAtExpiry - defaultedLoanAmt) // rcTokensEligibleAtExpiry
-        _sendAmtPostFeesOptionalAccrue(invoker, cast(UInt160, get_pair_attribute(pair, "pairedToken")), pairedTokenAmtToCollect, feeRate, False)
-        
-        colAmount = _getColAmtFromRTokenAmt(_rcTokenAmt, _col, cast(UInt160, get_pair_attribute(pair, "rcToken")), mintRatio)
+        _sendAmtPostFeesOptionalAccrue(invoker, pairedToken_address, pairedTokenAmtToCollect, feeRate, False)
+
+        colAmount = _getColAmtFromRTokenAmt(_rcTokenAmt, _col, rcToken_address, mintRatio)
         colAmountToCollect = colAmount * defaultedLoanAmt // rcTokensEligibleAtExpiry
         _sendAmtPostFeesOptionalAccrue(invoker, _col, colAmountToCollect, feeRate, True)
 
 
 def _sendAmtPostFeesOptionalAccrue(invoker: UInt160, _token: UInt160, _amount: int, _feeRate: int, _accrue: bool):
     fees = _amount * _feeRate // 100_000_000
-    call_contract(_token, "transfer", [executing_script_hash, invoker, _amount - fees])
+    assert call_contract(_token, "transfer", [executing_script_hash, invoker, _amount - fees, "collect paired token from ruler with rcTokens"])
     if _accrue:
         original_fee = feesMap.get(_token).to_int()
         feesMap.put(_token, original_fee + fees)

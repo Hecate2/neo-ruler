@@ -7,7 +7,7 @@ from neo3.vm import IntegerStackItem, VMState
 import datetime, time
 from neo3.contracts import NeoToken, GasToken
 neo, gas = NeoToken(), GasToken()
-from utils import Hash160Str, gen_expiry_timestamp_and_str, EngineResultInterpreter
+from utils import Hash160Str, gen_expiry_timestamp_and_str, gen_expiry_timestamp_and_str_in_seconds, EngineResultInterpreter
 
 nef_path = 'rToken.nef'
 contract_owner_pubkey = '0355688d0a1dc59a51766b3736eee7617404f2e0af1eb36e57f11e647297ad8b34'
@@ -16,7 +16,8 @@ random_hash = '0' * 40
 # settings.default_settings['network']['standby_committee'] = [contract_owner_pubkey]
 engine = TestEngine('ruler.nef', signers=[contract_owner_hash])
 
-_30_days_later_ending_milisecond, _30_days_later_date_str = gen_expiry_timestamp_and_str(30)
+# _30_days_later_ending_milisecond, _30_days_later_date_str = gen_expiry_timestamp_and_str(30)
+_30_days_later_ending_milisecond, _30_days_later_date_str = gen_expiry_timestamp_and_str_in_seconds(30)
 mint_ratio = 7
 fee_rate = 0
 
@@ -61,3 +62,7 @@ print('balanceOf my rrToken:', end=' '); engine.print_results()
 engine.invoke_method_of_arbitrary_contract(neo.hash, 'balanceOf', [contract_owner_hash])
 print('invoke method balanceOf my NEO:', end=' '); engine.print_results()
 
+# collecting would never succeed because there is no concept of ever-changing time for the vm
+engine.invoke_method_with_print("collect", params=[contract_owner_hash, pair_attributes['collateralToken'], pair_attributes['pairedToken'], pair_attributes['expiry'], pair_attributes['mintRatio'], 700000000])
+engine.get_rToken_balance(rcToken_address, contract_owner_hash)
+print('balanceOf my rcToken:', end=' '); engine.print_results()
