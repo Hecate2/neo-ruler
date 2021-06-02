@@ -2,9 +2,9 @@ from typing import List, Union, Dict
 import base64
 import json
 import requests
-from neo_test_with_rpc.retry import retry, RetryExhausted
+from neo_test_with_rpc.retry import retry
 
-from utils import Hash160Str, Signer, ClientResultInterpreter
+from tests.utils import Hash160Str, Signer
 from neo3.core.types import UInt160
 from neo3.contracts import NeoToken, GasToken
 neo, gas = NeoToken(), GasToken()

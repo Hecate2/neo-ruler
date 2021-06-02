@@ -1,9 +1,9 @@
 import json
 import os
 from functools import partial
-from typing import List, Union, Tuple, Any, cast, Callable
+from typing import List, Union, Tuple, Any, Callable
 
-from utils import Hash160Str, EngineResultInterpreter
+from tests.utils import Hash160Str, EngineResultInterpreter
 
 from neo3 import vm, contracts, blockchain
 from neo3.contracts import ApplicationEngine, interop

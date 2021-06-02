@@ -2,11 +2,11 @@
 This test would never always succeed because we cannot know whether the transactions have been relayed on the chain
 """
 
-from typing import Dict, List, Tuple
+from typing import Dict
 import time
 
-from utils import Hash160Str, Signer, WitnessScope,\
-    gen_expiry_timestamp_and_str, gen_expiry_timestamp_and_str_in_seconds,\
+from tests.utils import Hash160Str, Signer, WitnessScope, \
+    gen_expiry_timestamp_and_str_in_seconds,\
     ClientResultInterpreter, sleep_until
 from neo_test_with_rpc import TestClient
 from neo3.contracts import NeoToken, GasToken
