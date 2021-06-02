@@ -28,7 +28,7 @@ from boa3.builtin.interop.iterator import Iterator
 
 from boa3.builtin import NeoMetadata, metadata, public
 from boa3.builtin.interop.contract import call_contract, create_contract
-from boa3.builtin.interop.runtime import get_time, executing_script_hash
+from boa3.builtin.interop.runtime import get_time, executing_script_hash, calling_script_hash
 from boa3.builtin.interop.storage import get, put, find, StorageMap, get_context
 from boa3.builtin.type import UInt160
 
@@ -91,7 +91,7 @@ class Pair:
 # feesMap: Dict[UInt160, int] = {}
 feesMap = StorageMap(current_storage_context, 'feesMap')
 
-flashLoanRate: int = 0  # TODO: to be determined
+flashLoanRate: int = 5_000_000  # 100% == 100_000_000  # TODO: to be determined
 
 
 @metadata
@@ -432,29 +432,24 @@ def addPair(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str, _min
     collaterals.put(_col, True)
     return pair
     
-    
-# @public
-# def flashLoan(_receiver: UInt160, _token: UInt160, _amount: int, _data: Any) -> bool:
-#     """
-#     I cannot really understand the purpose of this feature provided by ETH ruler.
-#     :param _receiver:
-#     :param _token:
-#     :param amount:
-#     :param _data:
-#     :return:
-#     """
-#     global minColRatioMap
-#     assert minColRatioMap[_token] > 0, "Ruler: token not allowed"
-#     call_contract(_token, "transfer", [executing_script_hash, calling_script_hash, _amount])
-#     unfinished
-#     requires method 'onFlashLoan' to be implemented by the user as a standard
-#     return False
 
-
-# def flashFee(_token: UInt160, _amount: int) -> int:
-#     global minColRatioMap
-#     assert minColRatioMap.get(_token).to_int() > 0, 'RulerCore: token not supported'
-#     return _amount * flashLoanRate // 100_000_000
+@public
+def flashLoan(_receiver: UInt160, _token: UInt160, _amount: int, _data: Any) -> bool:
+    """
+    invoker receives an amount of token immediately, utilize the amount of paired token immediately with onFlashLoan,
+      and repay all the borrowed paired token and an amount of fee immediately
+    :param _receiver:
+    :param _token:
+    :param amount:
+    :param _data:
+    :return:
+    """
+    assert call_contract(_token, "transfer", [executing_script_hash, _receiver, _amount, _data]), "Failed to transfer from Ruler to flashLoan receiver"
+    fee = flashLoanRate * _amount // 100_000_000
+    assert call_contract(_receiver, 'onFlashLoan', [calling_script_hash, _token, _amount, fee, _data]), "Failed to execute method 'onFlashLoan' of flashLoan receiver"
+    feesMap.put(_token, feesMap.get(_token).to_int() + fee)
+    assert call_contract(_token, "transfer", [_receiver, executing_script_hash, _amount + fee, _data]), "Failed to transfer from flashLoan receiver to Ruler"
+    return True
 
 
 """
