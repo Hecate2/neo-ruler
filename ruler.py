@@ -252,21 +252,28 @@ def _validateDepositInputs(_pair: int):
     # TODO: Oracle
 
 
-'''
 @public
-def redeem(_col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _colAmt: int):
+def redeem(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _rTokenAmt: int) -> bool:
     """
     give rrTokens and rcTokens before expiry to receive collateral. Fees charged on collateral
-    No priority
-    :param _col:
-    :param _paired:
-    :param _expiry:
-    :param _mintRatio:
-    :param _colAmt:
-    :return:
     """
-    return
-'''
+    pair = _get_pair_with_assertion(_col, _paired, _expiry, _mintRatio)
+    assert get_time < get_pair_attribute(pair, 'expiry').to_int(), 'Ruler: pair expired'
+    
+    rcToken_address = cast(UInt160, get_pair_attribute(pair, 'rcToken'))
+    call_contract(rcToken_address, 'burnByRuler', [invoker, _rTokenAmt])
+    rrToken_address = cast(UInt160, get_pair_attribute(pair, 'rrToken'))
+    call_contract(rrToken_address, 'burnByRuler', [invoker, _rTokenAmt])
+    
+    colAmountToPay = _getColAmtFromRTokenAmt(_rTokenAmt, _col, rcToken_address, _mintRatio)
+    colTotal_key = gen_pair_key(pair, 'colTotal')
+    colTotal = pair_map.get(colTotal_key).to_int()
+    pair_map.put(colTotal_key, colTotal - colAmountToPay)
+    
+    feeRate = get_pair_attribute(pair, 'feeRate').to_int()
+    _sendAmtPostFeesOptionalAccrue(invoker, _col, colAmountToPay, feeRate, True)
+
+    return True
 
 
 @public
