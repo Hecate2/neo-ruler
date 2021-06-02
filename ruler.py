@@ -1,9 +1,5 @@
 """
-requires neo3-boa==0.8.1
-A replication of RULER protocol from ETH
-https://rulerprotocol.com/
-It is likely that the protocol cannot fully comply with NEP-17
-because the name of tokens are always varying
+A replication of ruler protocol from ETH ecology: https://rulerprotocol.com/
 
 The invoker of this contract borrows parity token by paying collateral token.
 The contract gives the invoker not the parity token, but instead rcToken and rrToken.
@@ -16,9 +12,13 @@ When the parity token is paid back by the borrower, the owners of rcToken are gi
 If the parity token is only partially (or never) paid back after expiry,
     part of the borrower's collateral token can be claimed by rcToken holders,
     and the remaining part of the collateral can be claimed by the borrower.
-(This contract attempts to support only NEO as the collateral token, and GAS as the parity token?)
+Amount of defaulted loan is counted by the remaining total supply of rrToken.
+    Therefore, rrTokens should not be burned after expiry
 The loan is FUNGIBLE. Anyone can collateralize tokens to borrow paired tokens. Any defaulted loan from the contract
     results to rcToken holder to get collateral tokens instead of paired tokens.
+
+Potential fees of paired or collateral can be charged by the ruler on borrower or lender,
+    but fees are not reliably supported for now.
 
 pair["colTotal"] is used to count all the rrTokens that have been minted; usually does not need to be reduced.
 """
@@ -246,7 +246,6 @@ def _getColAmtFromRTokenAmt(_rTokenAmt: int, _col: UInt160, _rToken: UInt160, _m
 
 
 def _validateDepositInputs(_pair: int):
-    # assert cast(int, _pair["mintRatio"]) != 0, "Ruler: pair does not exist"
     assert get_pair_attribute(_pair, "active"), "Ruler: pair inactive"
     assert get_pair_attribute(_pair, "expiry").to_int() > get_time, "Ruler: pair expired"
     # TODO: Oracle
@@ -301,18 +300,6 @@ def repay(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mint
     assert call_contract(_col, "transfer", [executing_script_hash, invoker, colAmountToPay, "Transfer from Ruler to caller"])
 
 
-# @public
-# def burn_rrToken_after_expiry(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _rrTokenAmt: int):
-#     """
-#     This method will not be included in the formal contract, because the totalSupply of rrToken after expiry is used
-#         to compute defaulted loans
-#     """
-#     pair = _get_pair_with_assertion(_col, _paired, _expiry, _mintRatio)
-#     assert get_time > _expiry, "You can only burn your rrToken after the loan expires"
-#     rrToken_address = cast(UInt160, get_pair_attribute(pair, "rrToken"))
-#     call_contract(rrToken_address, "burnByRuler", [invoker, _rrTokenAmt])
-
-
 @public
 def collect(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _rcTokenAmt: int):
     """
@@ -325,7 +312,6 @@ def collect(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mi
     :return:
     """
     pair = _get_pair_with_assertion(_col, _paired, _expiry, _mintRatio)
-    # assert cast(int, pair["mintRatio"]) != 0, "Ruler: pair does not exist"
     assert get_time > get_pair_attribute(pair, "expiry").to_int(), "Ruler: loan not expired"
     rcToken_address = cast(UInt160, get_pair_attribute(pair, "rcToken"))
     call_contract(rcToken_address, "burnByRuler", [invoker, _rcTokenAmt])
