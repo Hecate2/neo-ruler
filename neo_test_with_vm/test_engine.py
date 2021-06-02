@@ -250,7 +250,7 @@ class TestEngine:
             self.previous_engine.snapshot.contracts.put(contract)
             
     def set_NEP17_token_balance(self, token_contract: Union[contracts.ContractState, NativeContract], account:Union[UInt160, str],
-                                amount: Union[int, float] = 2147483647, bytes_needed: int = None):
+                                amount: Union[int, float] = 2000000000, bytes_needed: int = None):
         """
         This is achieved by directly changing the storage of the NEP17 contract
         :param token_contract: contract managing the token
