@@ -130,8 +130,6 @@ function flashFee
 
 - High precision: let there be no error in the amount of returned token, by automatically reducing the amount of paid token. **This would be very difficult if fees are levied.**
 - flashLoan: borrower get actual paired tokens instead of rTokens. Fees charged.
-- mmDeposit: market make deposit: deposit paired token into ruler to receive rcToken immediately. Fees?
-- redeem: give rrTokens and rcTokens to the ruler before expiry to receive collateral. Fees charged.
 - RULER token and liquidity mining
 - xRULER token
 
