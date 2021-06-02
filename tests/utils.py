@@ -204,6 +204,11 @@ def sleep_until(timestamp_millisecond: Union[int, float], accuracy = 0.5):
         time.sleep(accuracy)
 
 
+def sleep_for_next_block(sleep_seconds=15):
+    print(f'sleep {sleep_seconds} seconds waiting for the next block')
+    time.sleep(sleep_seconds)
+
+
 if __name__ == '__main__':
     print('30 days:', gen_expiry_timestamp_and_str(30))
     print(' 0 days:', gen_expiry_timestamp_and_str(0))
