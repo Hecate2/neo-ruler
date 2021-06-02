@@ -146,6 +146,21 @@ class TestEngine:
         else:
             raise ValueError(f'Unable to handle signer {signer} with type {type_signer}')
 
+    @staticmethod
+    def contract_hash_auto_checker(contract_hash: Union[UInt160, Hash160Str, str]):
+        type_contract_hash = type(contract_hash)
+        if type_contract_hash is Hash160Str:
+            return types.UInt160.from_string(str(contract_hash)[2:])
+        elif type_contract_hash is str:
+            if len(contract_hash) == 40:
+                return types.UInt160.from_string(contract_hash)
+            elif len(contract_hash) == 42 and contract_hash.startswith('0x'):
+                return types.UInt160.from_string(contract_hash[2:])
+            else:
+                return contract_hash
+        elif type_contract_hash is UInt160:
+            return contract_hash
+
     def invoke_method(self, method: str, params: List = None, signers: List[Union[str, UInt160, payloads.Signer]] = None,
                       scope: payloads.WitnessScope = payloads.WitnessScope.GLOBAL,
                       engine: ApplicationEngine = None, with_print=False) -> ApplicationEngine:
@@ -167,7 +182,7 @@ class TestEngine:
         self.print_results(executed_engine, result_interpreted_as_hex, result_interpreted_as_iterator, further_interpreter)
         return executed_engine
 
-    def invoke_method_of_arbitrary_contract(self, contract_hash: UInt160, method: str, params: List = None,
+    def invoke_method_of_arbitrary_contract(self, contract_hash: Union[UInt160, Hash160Str, str], method: str, params: List = None,
                       signers: List[Union[str, UInt160, payloads.Signer]] = None,
                       scope: payloads.WitnessScope = payloads.WitnessScope.GLOBAL,
                       engine: ApplicationEngine = None):
@@ -177,13 +192,13 @@ class TestEngine:
         if not engine:
             engine = self.new_engine(self.previous_engine)
     
-        contract = self.contract
+        contract_hash = self.contract_hash_auto_checker(contract_hash)
         # engine.load_script(vm.Script(contract.script))
         sb = vm.ScriptBuilder()
         if params:
             sb.emit_dynamic_call_with_args(contract_hash, method, params)
         else:
-            sb.emit_dynamic_call(contract.hash, method)
+            sb.emit_dynamic_call(contract_hash, method)
         engine.load_script(vm.Script(sb.to_array()))
     
         if signers and signers != self.NO_SIGNER:
