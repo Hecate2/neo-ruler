@@ -293,10 +293,10 @@ def _getRTokenAmtFromColAmt(_colAmt: int, _col: UInt160, _paired: UInt160, _mint
     collateral_token_decimals = call_contract(_col, "decimals")
     delta_decimals = cast(int, parity_token_decimals) - cast(int, collateral_token_decimals)
     if delta_decimals >= 0:
-        return _colAmt * _mintRatio * (10 ** delta_decimals)
+        return _colAmt * _mintRatio * (10 ** delta_decimals) // DECIMAL_BASE
     else:
         delta_decimals = -delta_decimals
-        return _colAmt * _mintRatio // (10 ** delta_decimals)
+        return _colAmt * _mintRatio // (DECIMAL_BASE * 10 ** delta_decimals)
         # is // a good choice?
         # TODO: consider / instead of //
 
@@ -306,10 +306,10 @@ def _getColAmtFromRTokenAmt(_rTokenAmt: int, _col: UInt160, _rToken: UInt160, _m
     collateral_token_decimals = call_contract(_col, "decimals")
     delta_decimals = cast(int, collateral_token_decimals) - cast(int, r_token_decimals)
     if delta_decimals >= 0:
-        return _rTokenAmt * (10 ** delta_decimals) // _mintRatio
+        return _rTokenAmt * (10 ** delta_decimals) * DECIMAL_BASE // _mintRatio
     else:
         delta_decimals = -delta_decimals
-        return _rTokenAmt // (_mintRatio * 10 ** delta_decimals)
+        return _rTokenAmt * DECIMAL_BASE // (_mintRatio * 10 ** delta_decimals)
         # is // a good choice?
         # TODO: consider / instead of //
 
@@ -532,3 +532,9 @@ def getPairAttributes(_pair: int) -> Iterator:
 def getFeesMap() -> Iterator:
     assert check_witness(get(ADMINISTRATOR_KEY)) or check_witness(get(FEE_RECEIVER_KEY))
     return find(b'feesMap')
+
+
+@public
+def get_decimal_base() -> int:
+    return DECIMAL_BASE
+

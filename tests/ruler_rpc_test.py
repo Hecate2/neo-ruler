@@ -31,8 +31,9 @@ administrating_client.openwallet()
 expiry_timestamp, expiry_str = gen_expiry_timestamp_and_str_in_seconds(60)  # this does not work for deposit
 print(expiry_timestamp - time.time() * 1000)
 
-mint_ratio = 7
-fee_rate = 0
+DECIMAL_BASE = 100_000_000
+mint_ratio = 7 * DECIMAL_BASE
+fee_rate = 0 * DECIMAL_BASE
 try:
     administrating_client.invokefunction('addPair', [neo.hash, gas.hash, expiry_timestamp, expiry_str, mint_ratio, str(mint_ratio), fee_rate])
 except ValueError as e:
