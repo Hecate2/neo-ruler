@@ -4,12 +4,10 @@ from neo3.core.types import UInt160
 # from neo3 import settings
 from neo3.network.payloads import Signer, WitnessScope
 from neo3.vm import IntegerStackItem, VMState
-import datetime, time
 from neo3.contracts import NeoToken, GasToken
 neo, gas = NeoToken(), GasToken()
-from utils import Hash160Str, gen_expiry_timestamp_and_str, gen_expiry_timestamp_and_str_in_seconds, EngineResultInterpreter
+from tests.utils import gen_expiry_timestamp_and_str_in_seconds, EngineResultInterpreter
 
-nef_path = 'rToken.nef'
 contract_owner_pubkey = '0355688d0a1dc59a51766b3736eee7617404f2e0af1eb36e57f11e647297ad8b34'
 contract_owner_hash = "6d629e44cceaf8722c99a41d5fb98cf3472c286a"
 random_hash = '0' * 40

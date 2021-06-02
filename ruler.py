@@ -111,26 +111,6 @@ def onNEP17Payment(_from_address: UInt160, _amount: int, _data: Any):
     #     abort()
 
 
-'''
-@public
-def mmDeposit(_col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _rcTokenAmt: int) -> None:
-    """
-    market make deposit
-    deposit paired token into the contract to receive rcToken immediately
-    caller must permit this contract to get token from caller's wallet
-    I cannot infer the purpose of using this method. Will not be implemented with priority
-    :param _col: address of the collateralized token
-    :param _paired: address of the paired token
-    :param _expiry: time of expiry
-    :param _mintRatio:
-    :param _rcTokenAmt:
-    :return: None
-    """
-    # emit MarketMakeDeposit event
-    return
-'''
-
-
 def _get_pair(_col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int) -> bytes:
     """
     assert result != b''
@@ -153,6 +133,7 @@ def _get_pair_with_assertion(_col: UInt160, _paired: UInt160, _expiry: int, _min
     return pair.to_int()  # int
 
 
+@public
 def get_pair_attribute(pair_index: int, attribute: str) -> bytes:
     return pair_map.get(gen_pair_key(pair_index, attribute))
 
@@ -175,6 +156,38 @@ def _insert_pair(active: bool, feeRate: int, mintRatio: int, expiry: int,
     pair_map.put(gen_pair_key(max_index, "colTotal"), colTotal)
     put(pair_max_index_key, max_index + 1)
     return max_index
+
+
+@public
+def mmDeposit(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _rcTokenAmt: int) -> bool:
+    """
+    market make deposit
+    deposit paired token into the contract to receive rcToken immediately
+    caller must permit this contract to get token from caller's wallet
+    I cannot infer the purpose of using this method. Trying to receive collateral instead of paired token?
+    :param _col: address of the collateralized token
+    :param _paired: address of the paired token
+    :param _expiry: time of expiry
+    :param _mintRatio:
+    :param _rcTokenAmt:
+    :return: None
+    """
+    pair_index = _get_pair_with_assertion(_col, _paired, _expiry, _mintRatio)
+    _validateDepositInputs(pair_index)
+    assert call_contract(_paired, "transfer", [invoker, executing_script_hash, _rcTokenAmt, "Transfer from caller to Ruler"]), "Failed to transfer paired token from caller to Ruler"
+    
+    rcToken_address = cast(UInt160, get_pair_attribute(pair_index, 'rcToken'))
+    call_contract(rcToken_address, "mint", [invoker, _rcTokenAmt])
+
+    feeRate = get_pair_attribute(pair_index, 'feeRate').to_int()
+    feesMap.put(_paired, feesMap.get(_paired).to_int() + _rcTokenAmt * feeRate // 100_000_000)
+    
+    colAmount = _getColAmtFromRTokenAmt(_rcTokenAmt, _col, rcToken_address, _mintRatio)
+    colTotal_key = gen_pair_key(pair_index, 'colTotal')
+    colTotal = pair_map.get(colTotal_key).to_int()
+    pair_map.put(colTotal_key, colTotal + colAmount)
+
+    return True
 
 
 @public
@@ -269,11 +282,13 @@ def repay(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mint
     :return:
     """
     pair = _get_pair_with_assertion(_col, _paired, _expiry, _mintRatio)
-    _validateDepositInputs(pair)
+    assert get_pair_attribute(pair, "expiry").to_int() > get_time, "Ruler: pair expired"
 
     assert call_contract(_paired, "transfer", [invoker, executing_script_hash, _rrTokenAmt, "Transfer from caller to Ruler"])
     rrToken_address = cast(UInt160, get_pair_attribute(pair, "rrToken"))
     call_contract(rrToken_address, "burnByRuler", [invoker, _rrTokenAmt])
+    
+    feesMap.put(_paired, feesMap.get(_paired).to_int() + _rrTokenAmt * get_pair_attribute(pair, 'feeRate').to_int() // 10_000_000)
 
     colAmountToPay = _getColAmtFromRTokenAmt(_rrTokenAmt, _col, cast(UInt160, get_pair_attribute(pair, "rcToken")), get_pair_attribute(pair, "mintRatio").to_int())
     assert call_contract(_col, "transfer", [executing_script_hash, invoker, colAmountToPay, "Transfer from Ruler to caller"])
@@ -283,7 +298,7 @@ def repay(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mint
 # def burn_rrToken_after_expiry(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _rrTokenAmt: int):
 #     """
 #     This method will not be included in the formal contract, because the totalSupply of rrToken after expiry is used
-#         to computed defaulted loans
+#         to compute defaulted loans
 #     """
 #     pair = _get_pair_with_assertion(_col, _paired, _expiry, _mintRatio)
 #     assert get_time > _expiry, "You can only burn your rrToken after the loan expires"
