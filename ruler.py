@@ -28,7 +28,7 @@ from boa3.builtin.interop.iterator import Iterator
 
 from boa3.builtin import NeoMetadata, metadata, public
 from boa3.builtin.interop.contract import call_contract, create_contract
-from boa3.builtin.interop.runtime import get_time, executing_script_hash, calling_script_hash
+from boa3.builtin.interop.runtime import get_time, executing_script_hash, calling_script_hash, check_witness
 from boa3.builtin.interop.storage import get, put, find, StorageMap, get_context
 from boa3.builtin.type import UInt160
 
@@ -66,6 +66,12 @@ put(pair_max_index_key, 1)
 # pair: Dict[gen_pair_key, Any]; class Pair => attributes
 pair_map = StorageMap(current_storage_context, b'pair_')  # store attributes of pairs
 
+ADMINISTRATOR_KEY = b'ADMIN'
+FEE_RECEIVER_KEY = b'FEE_RECEIVER'
+FLASH_LOAN_RATE_KEY = b'FLASH_LOAN_RATE'
+DEPLOYED_KEY = b'DEPLOYED'
+
+DECIMAL_BASE = 100_000_000
 SEPARATOR = bytearray(b'_')
 
 
@@ -86,12 +92,8 @@ class Pair:
     int colTotal;  # used to count all the rrTokens that have been minted; usually does not need to be reduced.
 '''
 
-# pairList: List[Dict[str, Any]] = []  # List[Pair]
-# pairList = StorageMap(current_storage_context, 'pairList')
 # feesMap: Dict[UInt160, int] = {}
 feesMap = StorageMap(current_storage_context, 'feesMap')
-
-flashLoanRate: int = 5_000_000  # 100% == 100_000_000  # TODO: to be determined
 
 
 @metadata
@@ -109,6 +111,73 @@ def onNEP17Payment(_from_address: UInt160, _amount: int, _data: Any):
     # if _data != "Transfer from caller to Ruler" and _data != "Transfer from Ruler to caller":
     #     # just a mechanism to prevent accidental wrong payment
     #     abort()
+
+
+@public
+def deploy(administrator: UInt160) -> bool:
+    """
+    administrating access is mostly related to flashLoan
+    """
+    assert check_witness(administrator) or calling_script_hash == administrator
+    if get(DEPLOYED_KEY) == b'':  # not deployed
+        assert get(ADMINISTRATOR_KEY) == b''
+        put(ADMINISTRATOR_KEY, administrator)
+        put(FEE_RECEIVER_KEY, administrator)
+        put(DEPLOYED_KEY, 1)
+    else:
+        original_administrator = get(ADMINISTRATOR_KEY)
+        assert check_witness(original_administrator) or calling_script_hash == original_administrator
+        put(ADMINISTRATOR_KEY, administrator)
+    return True
+
+
+@public
+def setFlashLoanRate(_newRate: int) -> bool:
+    administrator = get(ADMINISTRATOR_KEY)
+    assert check_witness(administrator) or calling_script_hash == administrator
+    put(FLASH_LOAN_RATE_KEY, _newRate)
+    return True
+
+
+@public
+def getFlashLoanRate() -> int:
+    return get(FLASH_LOAN_RATE_KEY).to_int()
+
+
+@public
+def setFeeReceiver(receiver: UInt160) -> bool:
+    administrator = get(ADMINISTRATOR_KEY)
+    assert check_witness(administrator) or calling_script_hash == administrator
+    put(FEE_RECEIVER_KEY, receiver)
+    return True
+
+
+@public
+def collectFee(token: UInt160) -> bool:
+    # no need to check witness
+    fee_receiver = get(FEE_RECEIVER_KEY)
+    amount = feesMap.get(token).to_int()
+    if amount > 0:
+        feesMap.put(token, 0)
+        assert call_contract(token, 'transfer', [executing_script_hash, fee_receiver, amount, bytearray(b'collect ') + token])
+        return True
+    return False
+
+
+@public
+def collectFees() -> bool:
+    """
+    No guaranteed iterator support in Python.
+    """
+    # no need to check witness
+    iterator = find('feesMap')
+    fee_receiver = get(FEE_RECEIVER_KEY)
+    while iterator.next():
+        token = cast(UInt160, iterator.value[0])
+        fee_amount = cast(bytes, iterator.value[1]).to_int()
+        if fee_amount > 0:
+            assert call_contract(token, 'transfer', [executing_script_hash, fee_receiver, fee_amount, 'Collect Fees'])
+    return True
 
 
 def _get_pair(_col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int) -> bytes:
@@ -180,7 +249,7 @@ def mmDeposit(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _
     call_contract(rcToken_address, "mint", [invoker, _rcTokenAmt])
 
     feeRate = get_pair_attribute(pair_index, 'feeRate').to_int()
-    feesMap.put(_paired, feesMap.get(_paired).to_int() + _rcTokenAmt * feeRate // 100_000_000)
+    feesMap.put(_paired, feesMap.get(_paired).to_int() + _rcTokenAmt * feeRate // DECIMAL_BASE)
     
     colAmount = _getColAmtFromRTokenAmt(_rcTokenAmt, _col, rcToken_address, _mintRatio)
     colTotal_key = gen_pair_key(pair_index, 'colTotal')
@@ -336,7 +405,7 @@ def collect(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mi
 
 
 def _sendAmtPostFeesOptionalAccrue(invoker: UInt160, _token: UInt160, _amount: int, _feeRate: int, _accrue: bool):
-    fees = _amount * _feeRate // 100_000_000
+    fees = _amount * _feeRate // DECIMAL_BASE
     assert call_contract(_token, "transfer", [executing_script_hash, invoker, _amount - fees, "collect paired token from ruler with rcTokens"])
     if _accrue:
         original_fee = feesMap.get(_token).to_int()
@@ -363,14 +432,11 @@ def _modifyManifestName(_symbol: bytes) -> bytes:
     :param _symbol:
     :return:
     '''
-    # make sure _template_manifest[:-1] removes the last '}' in the manifest
     return rTokenTemplateManifestPrefix + _symbol + rTokenTemplateManifestSuffix
 
 
 def _createRToken(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str, _mintRatioStr: str, _prefix: bytes, _paired_token_decimals: int) -> UInt160:
-    # assert _paired_token_decimals >= 0, "RulerCore: paired decimals < 0"
     col_symbol = cast(bytes, call_contract(_col, "symbol", []))
-    # col_decimals = cast(int, call_contract(_col, "decimals", []))
     paired_symbol = cast(bytes, call_contract(_paired, "symbol", []))
     symbol = bytearray(_prefix) + \
              bytearray(col_symbol) + \
@@ -404,11 +470,11 @@ def addPair(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str, _min
     pair = _get_pair(_col, _paired, _expiry, _mintRatio)
     assert pair == b'', 'Ruler: pair exists'
     assert _mintRatio > 0, "Ruler: _mintRatio <= 0"
-    assert _feeRate < 100_000_000, "Ruler: fee rate must be < 100%"  # TODO: fee rate
+    assert _feeRate < DECIMAL_BASE, "Ruler: fee rate must be < 100%"  # TODO: fee rate
     assert _expiry > get_time, "Ruler: expiry time earlier than current block timestamp"
     # minColRatioMap is related to fees
     # assert minColRatioMap.get(_col).to_int() > 0, "Ruler: collateral not listed"
-    # minColRatioMap.put(_paired, 100_000_000)
+    # minColRatioMap.put(_paired, DECIMAL_BASE)
     paired_token_decimals = cast(int, call_contract(_paired, "decimals", []))
     # pair: Dict[str, Any] = {
     #     'active': True,
@@ -427,8 +493,6 @@ def addPair(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str, _min
                  0)
     pairs_map.put(_col + SEPARATOR + _paired + SEPARATOR + bytearray(_expiry.to_bytes()) +
                   SEPARATOR + bytearray(_mintRatio.to_bytes()), pair)
-    # pairList.append(pair)
-    # pairList.put(_col + SEPARATOR + _paired, True)
     collaterals.put(_col, True)
     return pair
     
@@ -437,7 +501,7 @@ def addPair(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str, _min
 def flashLoan(_receiver: UInt160, _token: UInt160, _amount: int, _data: Any) -> bool:
     """
     invoker receives an amount of token immediately, utilize the amount of paired token immediately with onFlashLoan,
-      and repay all the borrowed paired token and an amount of fee immediately
+        and repay all the borrowed paired token and an amount of fee immediately
     :param _receiver:
     :param _token:
     :param amount:
@@ -445,27 +509,16 @@ def flashLoan(_receiver: UInt160, _token: UInt160, _amount: int, _data: Any) -> 
     :return:
     """
     assert call_contract(_token, "transfer", [executing_script_hash, _receiver, _amount, _data]), "Failed to transfer from Ruler to flashLoan receiver"
-    fee = flashLoanRate * _amount // 100_000_000
+    fee = get(FLASH_LOAN_RATE_KEY).to_int() * _amount // DECIMAL_BASE
     assert call_contract(_receiver, 'onFlashLoan', [calling_script_hash, _token, _amount, fee, _data]), "Failed to execute method 'onFlashLoan' of flashLoan receiver"
     feesMap.put(_token, feesMap.get(_token).to_int() + fee)
     assert call_contract(_token, "transfer", [_receiver, executing_script_hash, _amount + fee, _data]), "Failed to transfer from flashLoan receiver to Ruler"
     return True
 
 
-"""
-@public
-def setFlashLoanRate(_newRate: int) -> bool:
-    return False
-
-"""
 @public
 def getCollaterals() -> Iterator:
     return find(b'collaterals', current_storage_context)
-
-# @public
-# def getPairList(_col: UInt160) -> Iterator:
-#     return find(bytearray(b'pairList') + _col, current_storage_context)
-#     # return pairList.find(_col)
 
 @public
 def getPairsMap(_col: UInt160) -> Iterator:
@@ -474,3 +527,8 @@ def getPairsMap(_col: UInt160) -> Iterator:
 @public
 def getPairAttributes(_pair: int) -> Iterator:
     return find(bytearray(b'pair_') + bytearray(_pair.to_bytes()) + SEPARATOR)
+
+@public
+def getFeesMap() -> Iterator:
+    assert check_witness(get(ADMINISTRATOR_KEY)) or check_witness(get(FEE_RECEIVER_KEY))
+    return find(b'feesMap')
