@@ -153,29 +153,32 @@ def setFeeReceiver(receiver: UInt160) -> bool:
 
 
 @public
-def collectFee(token: UInt160) -> bool:
+def collectFee(token: UInt160) -> int:
     # no need to check witness
     fee_receiver = get(FEE_RECEIVER_KEY)
     amount = feesMap.get(token).to_int()
     if amount > 0:
         feesMap.put(token, 0)
         assert call_contract(token, 'transfer', [executing_script_hash, fee_receiver, amount, bytearray(b'collect ') + token])
-        return True
-    return False
+    return amount
 
 
 @public
 def collectFees() -> bool:
     """
-    No guaranteed iterator support in Python.
+    THIS API IS NOT OPERABLE FOR NOW
+    wrong JMPIF instruction, maybe related to slicing
     """
     # no need to check witness
-    iterator = find('feesMap')
+    iterator = find(b'feesMap')
     fee_receiver = get(FEE_RECEIVER_KEY)
     while iterator.next():
-        token = cast(UInt160, iterator.value[0])
-        fee_amount = cast(bytes, iterator.value[1]).to_int()
+        token_bytes = cast(bytes, iterator.value[0])
+        token_bytes = token_bytes[7:]  # cut 'feesMap' at the beginning of the bytes
+        token = cast(UInt160, token_bytes)
+        fee_amount = cast(int, iterator.value[1])
         if fee_amount > 0:
+            feesMap.put(token, 0)
             assert call_contract(token, 'transfer', [executing_script_hash, fee_receiver, fee_amount, 'Collect Fees'])
     return True
 

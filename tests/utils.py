@@ -185,6 +185,15 @@ class ClientResultInterpreter(ResultInterpreter):
         return pairs
     
     @staticmethod
+    def interpret_getFeesMap(fees: List[dict]) -> Dict[Hash160Str, int]:
+        bytestr_fees = [ClientResultInterpreter.base64_struct_to_bytestrs(fee) for fee in fees]
+        fees_dict = dict()
+        for fee in bytestr_fees:
+            token_address_bytes = fee[0][len(b'feesMap'):]
+            fees_dict[ClientResultInterpreter.bytes_to_Hash160str(token_address_bytes)] = ClientResultInterpreter.bytes_to_int(fee[1])
+        return fees_dict
+    
+    @staticmethod
     def interpret_getPairAttribtutes(Pair):
         pair_attributes = dict()
         for attribute in Pair:
@@ -199,6 +208,7 @@ class ClientResultInterpreter(ResultInterpreter):
 
 
 def sleep_until(timestamp_millisecond: Union[int, float], accuracy = 0.5):
+    print(f'sleep until timestamp (millisecond): {timestamp_millisecond}')
     timestamp = timestamp_millisecond / 1000
     while time.time() < timestamp:
         time.sleep(accuracy)
