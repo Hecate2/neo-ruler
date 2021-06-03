@@ -178,7 +178,7 @@ def collectFees() -> bool:
         token = cast(UInt160, token_bytes)
         fee_amount = cast(int, iterator.value[1])
         if fee_amount > 0:
-            feesMap.put(token, 0)
+            # feesMap.put(token, 0)  # This must be commented out for now. Otherwise get_pair_attribute would be broken
             assert call_contract(token, 'transfer', [executing_script_hash, fee_receiver, fee_amount, 'Collect Fees'])
     return True
 
