@@ -15,8 +15,9 @@ engine = TestEngine('ruler.nef', signers=[contract_owner_hash])
 
 # _30_days_later_ending_milisecond, _30_days_later_date_str = gen_expiry_timestamp_and_str(30)
 _30_days_later_ending_milisecond, _30_days_later_date_str = gen_expiry_timestamp_and_str_in_seconds(30)
-mint_ratio = 7
-fee_rate = 0
+DECIMAL_BASE = 100_000_000
+mint_ratio = 7 * DECIMAL_BASE
+fee_rate = 0 * DECIMAL_BASE
 
 engine.invoke_method_with_print("addPair", params=[neo.hash, gas.hash, _30_days_later_ending_milisecond, _30_days_later_date_str, mint_ratio, str(mint_ratio), fee_rate])
 assert engine.state == VMState.HALT and engine.result_stack.peek() == IntegerStackItem(1)
