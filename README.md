@@ -120,15 +120,8 @@ Part of paired tokens are marked as fees when borrowers `repay`. Part of collate
 #### Known Problems
 
 - Different rulers may deploy rToken contracts of the same `Pair(collateral, paired, expiry, mint_ratio)`. The ruler who deploys the rToken later would run into error: `Contract Already Exists: {contract_hash}`. A potential idea to resolve the conflict, is to add ruler's executing_script_hash into the name of rToken manifest. However, this method results in `'0x05' is invalid within a JSON string. The string should be correctly escaped. `, because executing_script_hash is not valid string.
-- Precision of computation: repaying a little bit of GAS leads to 0 NEO returned. Possible solution: increase number of decimals, and require the returned number of tokens as integer. Also, What if we want the mint ratio as a float?
-- Large integers may lead to unexpected results, but this might have been fixed in the latest version of `neo-vm`.
-- It's VERY DIFFICULT to interpret the raw results returned from the contract. There has to be an SDK for users. 
-
-#### Issues to be discussed
-
-- Fees can be levied on lender. Shall fees be levied? Who receives the fee?
-- Permission of management APIs ?
-- Is it necessary to store representation strings (e.g. `expiry_str` and `mint_ratio_str`) in the contract?
+- Precision of  amount of returned token: repaying a little bit of GAS leads to 0 NEO returned. Solution: DO NOT USE NATIVE NEO IN RULER!
+- It's VERY DIFFICULT to interpret the raw results returned from the contract. There has to be an SDK for users. Do not forget to check out `tests/utils.py` and the test suite in this repository. 
 
 #### Potential new features
 
@@ -136,8 +129,6 @@ Part of paired tokens are marked as fees when borrowers `repay`. Part of collate
 - xRULER token
 
 #### Difficulties
-
-no float support; no arithmetic division `/` support for now
 
 no contract inheritance in Python
 
