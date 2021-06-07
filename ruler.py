@@ -460,20 +460,21 @@ def _createRToken(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str
 def addPair(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str, _mintRatio: int, _mintRatioStr: str, _feeRate: int) -> int:
     """
     add a new Ruler Pair. It is not bad for all the users to utilize this method.
-        Not necessary to limit the permission to the administrator of ruler.
+        However, only new pairs added by administrator are active.
+        Pairs added by the public are not active by default
     :param _col: collateral token address
     :param _paired: paired token address
     :param _expiry: expiry timestamp
     :param _expiryStr: readable date string. 'MM/DD/YYYY'. e.g. '05/20/2021'
     :param _mintRatio: mint ratio of this loan. How many paired token is worth 1 collateral token
     :param _mintRatioStr:
-    :param _feeRate: A fee is charged for extraordinary operations. TODO: feeRate to be determined
+    :param _feeRate: A fee is charged for extraordinary operations.
     :return: None
     """
     pair = _get_pair(_col, _paired, _expiry, _mintRatio)
     assert pair == b'', 'Ruler: pair exists'
     assert _mintRatio > 0, "Ruler: _mintRatio <= 0"
-    assert _feeRate < DECIMAL_BASE, "Ruler: fee rate must be < 100%"  # TODO: fee rate
+    assert _feeRate < DECIMAL_BASE, "Ruler: fee rate must be < 100%"  # TODO: fee rate limit
     assert _expiry > get_time, "Ruler: expiry time earlier than current block timestamp"
     # minColRatioMap is related to fees
     # assert minColRatioMap.get(_col).to_int() > 0, "Ruler: collateral not listed"
@@ -490,10 +491,18 @@ def addPair(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str, _min
     #     'rrToken': _createRToken(_col, _paired, _expiry, _expiryStr, _mintRatioStr, "RR_", paired_token_decimals),
     #     'colTotal': 0,
     # }
-    pair = _insert_pair(True, _feeRate, _mintRatio, _expiry, _col, _paired,
-                 _createRToken(_col, _paired, _expiry, _expiryStr, _mintRatioStr, bytearray(b"RC") + SEPARATOR, paired_token_decimals),
-                 _createRToken(_col, _paired, _expiry, _expiryStr, _mintRatioStr, bytearray(b"RR") + SEPARATOR, paired_token_decimals),
-                 0)
+    administrator = get(ADMINISTRATOR_KEY)
+    if check_witness(administrator) or calling_script_hash == administrator:
+        pair = _insert_pair(True, _feeRate, _mintRatio, _expiry, _col, _paired,
+                     _createRToken(_col, _paired, _expiry, _expiryStr, _mintRatioStr, bytearray(b"RC") + SEPARATOR, paired_token_decimals),
+                     _createRToken(_col, _paired, _expiry, _expiryStr, _mintRatioStr, bytearray(b"RR") + SEPARATOR, paired_token_decimals),
+                     0)
+    else:
+        # pair not active if created by the public
+        pair = _insert_pair(False, _feeRate, _mintRatio, _expiry, _col, _paired,
+                     _createRToken(_col, _paired, _expiry, _expiryStr, _mintRatioStr, bytearray(b"RC") + SEPARATOR, paired_token_decimals),
+                     _createRToken(_col, _paired, _expiry, _expiryStr, _mintRatioStr, bytearray(b"RR") + SEPARATOR, paired_token_decimals),
+                     0)
     pairs_map.put(_col + SEPARATOR + _paired + SEPARATOR + bytearray(_expiry.to_bytes()) +
                   SEPARATOR + bytearray(_mintRatio.to_bytes()), pair)
     collaterals.put(_col, True)
@@ -533,9 +542,25 @@ def getPairAttributes(_pair: int) -> Iterator:
 
 @public
 def getFeesMap() -> Iterator:
-    assert check_witness(get(ADMINISTRATOR_KEY)) or check_witness(get(FEE_RECEIVER_KEY))
+    administrator = get(ADMINISTRATOR_KEY)
+    if not (check_witness(administrator) or calling_script_hash == administrator):
+        fee_receiver = get(FEE_RECEIVER_KEY)  # if not admin, get fee_receiver. This saves GAS for executing this API
+        assert check_witness(fee_receiver) or calling_script_hash == fee_receiver
     return find(b'feesMap')
 
+@public
+def setPaused(_col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int):
+    administrator = get(ADMINISTRATOR_KEY)
+    assert check_witness(administrator) or calling_script_hash == administrator
+    pair_index = _get_pair_with_assertion(_col, _paired, _expiry, _mintRatio)
+    pair_map.put(gen_pair_key(pair_index, 'active'), False)
+
+@public
+def setActive(_col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int):
+    administrator = get(ADMINISTRATOR_KEY)
+    assert check_witness(administrator) or calling_script_hash == administrator
+    pair_index = _get_pair_with_assertion(_col, _paired, _expiry, _mintRatio)
+    pair_map.put(gen_pair_key(pair_index, 'active'), True)
 
 @public
 def get_decimal_base() -> int:
