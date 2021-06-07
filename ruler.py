@@ -350,7 +350,7 @@ def redeem(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _min
 @public
 def repay(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _rrTokenAmt: int):
     """
-    repay the contract with rrTokens and paired token amount, and sender receives collateral.
+    repay the contract with rrTokens and paired token amount before expiry, and sender receives collateral.
     NO fees charged on collateral
     :param _col:
     :param _paired:
@@ -368,7 +368,8 @@ def repay(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mint
     
     feesMap.put(_paired, feesMap.get(_paired).to_int() + _rrTokenAmt * get_pair_attribute(pair, 'feeRate').to_int() // 10_000_000)
 
-    colAmountToPay = _getColAmtFromRTokenAmt(_rrTokenAmt, _col, cast(UInt160, get_pair_attribute(pair, "rcToken")), get_pair_attribute(pair, "mintRatio").to_int())
+    rcToken_address = cast(UInt160, get_pair_attribute(pair, "rcToken"))
+    colAmountToPay = _getColAmtFromRTokenAmt(_rrTokenAmt, _col, rcToken_address, get_pair_attribute(pair, "mintRatio").to_int())
     assert call_contract(_col, "transfer", [executing_script_hash, invoker, colAmountToPay, "Transfer from Ruler to caller"])
 
 
