@@ -107,7 +107,7 @@ function flashFee
 
 #### Management of fees
 
-Part of paired tokens are marked as fees when borrowers `repay`. Part of collaterals are marked as fees when lenders `collect`.  
+Part of paired tokens are marked as fees when borrowers `repay`. Part of collaterals are marked as fees when lenders `collect`. 
 
 #### Tests
 
@@ -132,8 +132,6 @@ Part of paired tokens are marked as fees when borrowers `repay`. Part of collate
 
 #### Potential new features
 
-- High precision: let there be no error in the amount of returned token, by automatically reducing the amount of paid token. **This would be very difficult if fees are levied.**
-- flashLoan: borrower get actual paired tokens instead of rTokens, and must pay back immediately. Fees charged.
 - RULER token and liquidity mining
 - xRULER token
 
