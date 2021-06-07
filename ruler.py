@@ -233,7 +233,7 @@ def _insert_pair(active: bool, feeRate: int, mintRatio: int, expiry: int,
 @public
 def mmDeposit(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _rcTokenAmt: int) -> bool:
     """
-    market make deposit
+    Special API: market make deposit
     deposit paired token into the contract to receive rcToken immediately
     caller must permit this contract to get token from caller's wallet
     I cannot infer the purpose of using this method. Trying to receive collateral instead of paired token?
@@ -265,7 +265,7 @@ def mmDeposit(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _
 @public
 def deposit(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _colAmt: int) -> bool:
     """
-    deposit collateral to a Ruler Pair, and the sender receives rcTokens and rrTokens
+    Borrower deposit collateral to a Ruler Pair, and the sender receives rcTokens and rrTokens
     :param _col:
     :param _paired:
     :param _expiry:
@@ -326,7 +326,7 @@ def _validateDepositInputs(_pair: int):
 @public
 def redeem(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _rTokenAmt: int) -> bool:
     """
-    give rrTokens and rcTokens before expiry to receive collateral. Fees charged on collateral
+    Special API: give rrTokens and rcTokens before expiry to receive collateral. Fees charged on collateral
     """
     pair = _get_pair_with_assertion(_col, _paired, _expiry, _mintRatio)
     assert get_time < get_pair_attribute(pair, 'expiry').to_int(), 'Ruler: pair expired'
@@ -376,7 +376,7 @@ def repay(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mint
 @public
 def collect(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mintRatio: int, _rcTokenAmt: int):
     """
-    sender collect paired tokens by returning same amount of rcTokens to Ruler
+    Lender collect paired tokens after expiry by returning same amount of rcTokens to Ruler
     :param _col:
     :param _paired:
     :param _expiry:

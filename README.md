@@ -105,6 +105,10 @@ function maxFlashLoan
 
 function flashFee
 
+#### Management of fees
+
+Part of paired tokens are marked as fees when borrowers `repay`. Part of collaterals are marked as fees when lenders `collect`.  
+
 #### Tests
 
 - Test of token contract `rToken.py`: almost OK
