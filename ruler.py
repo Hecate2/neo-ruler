@@ -366,7 +366,7 @@ def repay(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mint
     rrToken_address = cast(UInt160, get_pair_attribute(pair, "rrToken"))
     call_contract(rrToken_address, "burnByRuler", [invoker, _rrTokenAmt])
     
-    feesMap.put(_paired, feesMap.get(_paired).to_int() + _rrTokenAmt * get_pair_attribute(pair, 'feeRate').to_int() // 10_000_000)
+    feesMap.put(_paired, feesMap.get(_paired).to_int() + _rrTokenAmt * get_pair_attribute(pair, 'feeRate').to_int() // DECIMAL_BASE)
 
     rcToken_address = cast(UInt160, get_pair_attribute(pair, "rcToken"))
     colAmountToPay = _getColAmtFromRTokenAmt(_rrTokenAmt, _col, rcToken_address, get_pair_attribute(pair, "mintRatio").to_int())
