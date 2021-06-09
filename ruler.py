@@ -189,9 +189,9 @@ def collectFee(token: UInt160) -> int:
 @public
 def collectFees() -> bool:
     """
-    THIS API IS NOT OPERABLE FOR NOW
-    wrong JMPIF instruction, maybe related to slicing
+    Collect all the fees
     No need to check witness? Because the fee is always given to the fee receiver.
+    :return: True
     """
     iterator = find(b'feesMap')
     fee_receiver = get(FEE_RECEIVER_KEY)
@@ -201,7 +201,7 @@ def collectFees() -> bool:
         token = cast(UInt160, token_bytes)
         fee_amount = cast(int, iterator.value[1])
         if fee_amount > 0:
-            # feesMap.put(token, 0)  # This must be commented out for now. Otherwise get_pair_attribute would be broken
+            feesMap.put(token, 0)
             assert call_contract(token, 'transfer', [executing_script_hash, fee_receiver, fee_amount, 'Collect Fees'])
     return True
 
