@@ -12,7 +12,7 @@ target_url = 'http://127.0.0.1:23332'
 
 # make sure you deploy ruler.nef manually
 # contract_hash = Hash160Str('0x690c25c18a5e1ea758c1aef1411714a7fa14d394')
-from config import contract_hash
+from tests.config import contract_hash
 
 consensus_wallet_address = 'NhSRQSzNv8BwjKwQn2Spk7tY194uxXiESv'
 consensus_wallet_hash = Hash160Str('0x113f10ed24f2b70115d37c103130a236b7011dec')

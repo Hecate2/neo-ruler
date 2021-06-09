@@ -28,7 +28,7 @@ from boa3.builtin.interop.iterator import Iterator
 
 from boa3.builtin import NeoMetadata, metadata, public
 from boa3.builtin.interop.contract import call_contract, create_contract
-from boa3.builtin.interop.runtime import get_time, executing_script_hash, calling_script_hash, check_witness
+from boa3.builtin.interop.runtime import time, executing_script_hash, calling_script_hash, check_witness
 from boa3.builtin.interop.storage import get, put, find, StorageMap, get_context
 from boa3.builtin.type import UInt160
 
@@ -396,7 +396,7 @@ def _validateDepositInputs(_pair: int):
     :return: None
     """
     assert get_pair_attribute(_pair, "active"), "Ruler: pair inactive"
-    assert get_pair_attribute(_pair, "expiry").to_int() > get_time, "Ruler: pair expired"
+    assert get_pair_attribute(_pair, "expiry").to_int() > time, "Ruler: pair expired"
     # TODO: Oracle
     # If the price of collateral (in USD) is too low compared with the paired token, stop new deposits.
 
@@ -414,7 +414,7 @@ def redeem(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _min
     :return: The amount of collateral paid to invoker
     """
     pair = _get_pair_with_assertion(_col, _paired, _expiry, _mintRatio)
-    assert get_time < get_pair_attribute(pair, 'expiry').to_int(), 'Ruler: pair expired'
+    assert time < get_pair_attribute(pair, 'expiry').to_int(), 'Ruler: pair expired'
     
     rcToken_address = cast(UInt160, get_pair_attribute(pair, 'rcToken'))
     call_contract(rcToken_address, 'burnByRuler', [invoker, _rTokenAmt])
@@ -446,7 +446,7 @@ def repay(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mint
     :return: the amount of collateral paid back
     """
     pair = _get_pair_with_assertion(_col, _paired, _expiry, _mintRatio)
-    assert get_pair_attribute(pair, "expiry").to_int() > get_time, "Ruler: pair expired"
+    assert get_pair_attribute(pair, "expiry").to_int() > time, "Ruler: pair expired"
 
     assert call_contract(_paired, "transfer", [invoker, executing_script_hash, _rrTokenAmt, "Transfer from caller to Ruler"])
     rrToken_address = cast(UInt160, get_pair_attribute(pair, "rrToken"))
@@ -474,7 +474,7 @@ def collect(invoker: UInt160, _col: UInt160, _paired: UInt160, _expiry: int, _mi
     :return: How many paired token is collected
     """
     pair = _get_pair_with_assertion(_col, _paired, _expiry, _mintRatio)
-    assert get_time > get_pair_attribute(pair, "expiry").to_int(), "Ruler: loan not expired"
+    assert time > get_pair_attribute(pair, "expiry").to_int(), "Ruler: loan not expired"
     rcToken_address = cast(UInt160, get_pair_attribute(pair, "rcToken"))
     call_contract(rcToken_address, "burnByRuler", [invoker, _rcTokenAmt])
     
@@ -591,7 +591,7 @@ def addPair(_col: UInt160, _paired: UInt160, _expiry: int, _expiryStr: str, _min
     assert pair == b'', 'Ruler: pair exists'
     assert _mintRatio > 0, "Ruler: _mintRatio <= 0"
     assert _feeRate < DECIMAL_BASE, "Ruler: fee rate must be < 100%"  # TODO: fee rate limit
-    assert _expiry > get_time, "Ruler: expiry time earlier than current block timestamp"
+    assert _expiry > time, "Ruler: expiry time earlier than current block timestamp"
     # minColRatioMap is related to fees
     # assert minColRatioMap.get(_col).to_int() > 0, "Ruler: collateral not listed"
     # minColRatioMap.put(_paired, DECIMAL_BASE)
