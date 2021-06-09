@@ -1,21 +1,17 @@
-"""
-This test would never always succeed because we cannot know whether the transactions have been relayed on the chain
-"""
-
 from typing import Dict
 import time
 
-from tests.utils import Hash160Str, Signer, WitnessScope, \
-    gen_expiry_timestamp_and_str_in_seconds,\
-    ClientResultInterpreter, sleep_until
 from neo_test_with_rpc import TestClient
+from tests.utils import Hash160Str, Signer, WitnessScope, ClientResultInterpreter,\
+    gen_expiry_timestamp_and_str_in_seconds, sleep_for_next_block, sleep_until
 from neo3.contracts import NeoToken, GasToken
 neo, gas = NeoToken(), GasToken()
+
 
 target_url = 'http://127.0.0.1:23332'
 
 # make sure you deploy ruler.nef manually
-# contract_hash = Hash160Str('0xaf9abd7ba5bfb7dd17d70267ed09ec9d0876c814')
+# contract_hash = Hash160Str('0x690c25c18a5e1ea758c1aef1411714a7fa14d394')
 from tests.config import contract_hash
 
 consensus_wallet_address = 'NhSRQSzNv8BwjKwQn2Spk7tY194uxXiESv'
@@ -28,13 +24,11 @@ dev_signer = Signer(dev_wallet_hash, WitnessScope.CalledByEntry)
 
 administrating_client = TestClient(target_url, contract_hash, consensus_wallet_hash, consensus_wallet_address, 'consensus.json', '1')
 administrating_client.openwallet()
-# expiry_timestamp, expiry_str = gen_expiry_timestamp_and_str(33)  # this works for deposit and repay
 expiry_timestamp, expiry_str = gen_expiry_timestamp_and_str_in_seconds(60)  # this does not work for deposit
-print(expiry_timestamp - time.time() * 1000)
-
 DECIMAL_BASE = 100_000_000
 mint_ratio = 7 * DECIMAL_BASE
-fee_rate = 0 * DECIMAL_BASE
+fee_rate = int(0.01 * DECIMAL_BASE)
+administrating_client.invokefunction('deploy', [consensus_wallet_hash], signers=[consensus_signer])
 try:
     administrating_client.invokefunction('addPair', [neo.hash, gas.hash, expiry_timestamp, expiry_str, mint_ratio, str(mint_ratio), fee_rate])
 except ValueError as e:
@@ -42,12 +36,17 @@ except ValueError as e:
         print(e, end=' '); print('Maybe you have already added the Pair')
     else:
         raise e
-print()
+print(expiry_timestamp - time.time() * 1000)
+# expiry_timestamp, expiry_str = gen_expiry_timestamp_and_str(33)  # this works for deposit and repay
 dev_client = TestClient(target_url, contract_hash, dev_wallet_hash, dev_wallet_address, 'dev.json', '1')
 dev_client.openwallet()
-time.sleep(15)
+obtained_decimal_base = dev_client.invokefunction('get_decimal_base')
+print(obtained_decimal_base)
+
+sleep_for_next_block()
+
 neo_balance, gas_balance = dev_client.get_neo_balance(), dev_client.get_gas_balance()
-if neo_balance < 10 or gas_balance < 100e8:
+if neo_balance < 1000 or gas_balance < 100e8:
     input(f'Warning: only f{neo_balance} NEOs and {gas_balance/1e8} left. \npress ENTER to continue')
 dev_client.invokefunction("getCollaterals", result_interpreted_as_iterator=True)
 collaterals = ClientResultInterpreter.interpret_getCollaterals(dev_client.previous_result)
@@ -81,7 +80,7 @@ dev_client.invokefunction("deposit",
     signers=[Signer(dev_wallet_hash, WitnessScope.Global)])
 dev_client.print_previous_result()
 
-time.sleep(15)
+sleep_for_next_block()
 
 print()
 print('check rcToken and rrToken balance after deposit:')
@@ -101,7 +100,7 @@ dev_client.invokefunction("repay",
 dev_client.print_previous_result()
 
 sleep_until(expiry_timestamp)
-time.sleep(15)
+sleep_for_next_block()
 
 dev_client.invokefunction("collect",
     params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 700000000],
@@ -112,3 +111,16 @@ dev_client.invokefunction("collect",
     params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 2800000000],
     signers=[Signer(dev_wallet_hash, WitnessScope.Global)])
 dev_client.print_previous_result()
+
+administrating_client.openwallet()
+administrating_client.invokefunction('getFeesMap', result_interpreted_as_iterator=True)
+feesMap = ClientResultInterpreter.interpret_getFeesMap(administrating_client.previous_result)
+print('feesMap:', feesMap)
+
+print('collectFee:')
+administrating_client.invokefunction('collectFee', [gas.hash])
+administrating_client.print_previous_result()
+
+print('collectFees:')
+administrating_client.invokefunction('collectFees')
+administrating_client.print_previous_result()
