@@ -82,7 +82,7 @@ class TestClient:
         return result
     
     def print_previous_result(self):
-        print(self.previous_result)
+        print(self.previous_result['result']['stack'])
     
     @retry(RequestExceptions, tries=2, logger=None)
     def sendrawtransaction(self, transaction:str):
