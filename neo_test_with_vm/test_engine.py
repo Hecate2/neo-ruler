@@ -103,17 +103,19 @@ class TestEngine:
             partial_function_with_print = partial(self.invoke_method_with_print, method_name)
             setattr(self, method_name_with_print, partial_function_with_print)
     
-    def deploy_another_contract(self, nef_path: str, manifest_path: str = ''):
+    def deploy_another_contract(self, nef_path: str, manifest_path: str = '') -> UInt160:
         """
         these extra contracts can be called but cannot be tested
         """
         raw_nef, raw_manifest = self.read_raw_nef_and_raw_manifest(nef_path, manifest_path)
         nef, manifest = self.build_nef_and_manifest_from_raw(raw_nef, raw_manifest)
+        contract_hash = types.UInt160.deserialize_from_bytes(raw_nef[-20:])
         contract = contracts.ContractState(self.next_contract_id, nef, manifest, 0,
-                                           types.UInt160.deserialize_from_bytes(raw_nef))
+                                           contract_hash)
         self.previous_engine.snapshot.contracts.put(contract)
         self.deployed_contracts.append(contract)
         self.next_contract_id += 1
+        return contract_hash
     
     @staticmethod
     def param_auto_checker(param: Any) -> Any:
