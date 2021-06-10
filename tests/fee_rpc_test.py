@@ -24,11 +24,12 @@ dev_signer = Signer(dev_wallet_hash, WitnessScope.CalledByEntry)
 
 administrating_client = TestClient(target_url, contract_hash, consensus_wallet_hash, consensus_wallet_address, 'consensus.json', '1')
 administrating_client.openwallet()
-expiry_timestamp, expiry_str = gen_expiry_timestamp_and_str_in_seconds(60)  # this does not work for deposit
+expiry_timestamp, expiry_str = gen_expiry_timestamp_and_str_in_seconds(75)  # this does not work for deposit
 DECIMAL_BASE = 100_000_000
 mint_ratio = 7 * DECIMAL_BASE
-fee_rate = int(0.01 * DECIMAL_BASE)
+fee_rate = int(0.7 * DECIMAL_BASE)
 administrating_client.invokefunction('deploy', [consensus_wallet_hash], signers=[consensus_signer])
+sleep_for_next_block()
 try:
     administrating_client.invokefunction('addPair', [neo.hash, gas.hash, expiry_timestamp, expiry_str, mint_ratio, str(mint_ratio), fee_rate])
 except ValueError as e:
@@ -89,6 +90,8 @@ print('rcToken balance:', rcToken_before_deposit)
 rrToken_before_deposit = dev_client.get_rToken_balance(attributes['rrToken'])
 print('rrToken balance:', rrToken_before_deposit)
 
+print(expiry_timestamp - time.time() * 1000)
+
 dev_client.invokefunction("repay",
     params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 700000000],
     signers=[Signer(dev_wallet_hash, WitnessScope.Global)])
@@ -105,17 +108,19 @@ sleep_for_next_block()
 dev_client.invokefunction("collect",
     params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 700000000],
     signers=[Signer(dev_wallet_hash, WitnessScope.Global)])
-dev_client.print_previous_result()
+dev_client.print_previous_result()  # should collect 6237624 GAS
 
 dev_client.invokefunction("collect",
-    params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 2800000000],
+    params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 8000000000],
     signers=[Signer(dev_wallet_hash, WitnessScope.Global)])
 dev_client.print_previous_result()
+
+sleep_for_next_block()
 
 administrating_client.openwallet()
 administrating_client.invokefunction('getFeesMap', result_interpreted_as_iterator=True)
 feesMap = ClientResultInterpreter.interpret_getFeesMap(administrating_client.previous_result)
-print('feesMap:', feesMap)
+print('feesMap:', feesMap)  # should have 7 NEO
 
 print('collectFee:')
 administrating_client.invokefunction('collectFee', [gas.hash])
@@ -124,3 +129,8 @@ administrating_client.print_previous_result()
 print('collectFees:')
 administrating_client.invokefunction('collectFees')
 administrating_client.print_previous_result()
+
+sleep_for_next_block()
+administrating_client.invokefunction('getFeesMap', result_interpreted_as_iterator=True)
+feesMap = ClientResultInterpreter.interpret_getFeesMap(administrating_client.previous_result)
+print('feesMap:', feesMap)

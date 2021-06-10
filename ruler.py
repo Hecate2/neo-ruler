@@ -17,8 +17,8 @@ Amount of defaulted loan is counted by the remaining total supply of rrToken.
 The loan is FUNGIBLE. Anyone can collateralize tokens to borrow paired tokens. Any defaulted loan from the contract
     results to rcToken holder to get collateral tokens instead of paired tokens.
 
-Potential fees of paired or collateral can be charged by the ruler on borrower or lender,
-    but fees are not reliably supported for now.
+Potential fees of paired or collateral can be charged by the ruler on borrower or lender.
+Avoid using native NEO in this contract, because there has to be huge errors in computation with NEO.
 
 pair["colTotal"] is used to count all the rrTokens that have been minted; usually does not need to be reduced.
 """
@@ -199,7 +199,7 @@ def collectFees() -> bool:
         token_bytes = cast(bytes, iterator.value[0])
         token_bytes = token_bytes[7:]  # cut 'feesMap' at the beginning of the bytes
         token = cast(UInt160, token_bytes)
-        fee_amount = cast(int, iterator.value[1])
+        fee_amount = cast(bytes, iterator.value[1]).to_int()
         if fee_amount > 0:
             feesMap.put(token, 0)
             assert call_contract(token, 'transfer', [executing_script_hash, fee_receiver, fee_amount, 'Collect Fees'])
@@ -640,8 +640,8 @@ def flashLoan(_receiver: UInt160, _token: UInt160, _amount: int, _data: Any) -> 
     assert call_contract(_token, "transfer", [executing_script_hash, _receiver, _amount, _data]), "Failed to transfer from Ruler to flashLoan receiver"
     fee = get(FLASH_LOAN_RATE_KEY).to_int() * _amount // DECIMAL_BASE
     assert call_contract(_receiver, 'onFlashLoan', [calling_script_hash, _token, _amount, fee, _data]), "Failed to execute method 'onFlashLoan' of flashLoan receiver"
-    feesMap.put(_token, feesMap.get(_token).to_int() + fee)
     assert call_contract(_token, "transfer", [_receiver, executing_script_hash, _amount + fee, _data]), "Failed to transfer from flashLoan receiver to Ruler"
+    feesMap.put(_token, feesMap.get(_token).to_int() + fee)
     return True
 
 
