@@ -1,3 +1,3 @@
 from tests.utils import Hash160Str
 
-contract_hash = Hash160Str('0xf1746adcea1ff11ba08d2fa6ec6e78eafb53ccb9')
+contract_hash = Hash160Str('0xc99053e99aeb4de8477cd1da1e528071ec0a06d6')

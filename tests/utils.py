@@ -172,38 +172,38 @@ class ClientResultInterpreter(ResultInterpreter):
         return processed_struct
     
     @staticmethod
-    def interpret_getCollaterals(collaterals:List[dict]):
-        return [ClientResultInterpreter.bytes_to_Hash160str(base64.b64decode(collateral['value'][0]['value'])[len(b'collaterals'):]) for collateral in collaterals]
+    def interpret_getCollaterals(collaterals:dict) -> List:
+        return [ClientResultInterpreter.bytes_to_Hash160str(collateral[len(b'collaterals'):]) for collateral in collaterals]
 
     @staticmethod
-    def interpret_getPairsMap(Pairs:List[dict]) -> Dict[int, Hash160Str]:
-        bytestr_pairs = [ClientResultInterpreter.base64_struct_to_bytestrs(Pair) for Pair in Pairs]
+    def interpret_getPairsMap(Pairs:dict) -> Dict[int, Dict]:
         pairs = dict()
-        for pair in bytestr_pairs:
-            paired_token_address_bytes = pair[0][(len(b'pairs')+21):]
-            pairs[ClientResultInterpreter.bytes_to_int(pair[1])] = ClientResultInterpreter.bytes_to_Hash160str(paired_token_address_bytes)
+        for k, v in zip(Pairs.keys(), Pairs.values()):
+            paired_token_info_bytes = k[(len(b'pairs')):]
+            collateral_token_address, paired_token_address, paired_token_expiry, paired_token_mintRatio = paired_token_info_bytes.split(b'_')
+            pairs[ClientResultInterpreter.bytes_to_int(v)] = {
+                'collateralToken': ClientResultInterpreter.bytes_to_Hash160str(collateral_token_address),
+                'pairedToken': ClientResultInterpreter.bytes_to_Hash160str(paired_token_address),
+                'expiry': ClientResultInterpreter.bytes_to_int(paired_token_expiry),
+                'mintRatio': ClientResultInterpreter.bytes_to_int(paired_token_mintRatio)
+            }
         return pairs
     
     @staticmethod
-    def interpret_getFeesMap(fees: List[dict]) -> Dict[Hash160Str, int]:
-        bytestr_fees = [ClientResultInterpreter.base64_struct_to_bytestrs(fee) for fee in fees]
+    def interpret_getFeesMap(fees: dict) -> Dict[Hash160Str, int]:
         fees_dict = dict()
-        for fee in bytestr_fees:
-            token_address_bytes = fee[0][len(b'feesMap'):]
-            fees_dict[ClientResultInterpreter.bytes_to_Hash160str(token_address_bytes)] = ClientResultInterpreter.bytes_to_int(fee[1])
+        for k, v in zip(fees.keys(), fees.values()):
+            fees_dict[ClientResultInterpreter.bytes_to_Hash160str(k[len(b'feesMap'):])] = ClientResultInterpreter.bytes_to_int(v)
         return fees_dict
     
     @staticmethod
     def interpret_getPairAttribtutes(Pair):
         pair_attributes = dict()
-        for attribute in Pair:
-            attribute = ClientResultInterpreter.base64_struct_to_bytestrs(attribute)
-            attribute_name = attribute[0].split(b'_')[2].decode()
-            if 'Token' in attribute_name:
-                attribute_value = ClientResultInterpreter.bytes_to_Hash160str(attribute[1])
+        for k, v in zip(Pair.keys(), Pair.values()):
+            if b'Token' in k:
+                pair_attributes[k.split(b'_')[-1].decode()] = ClientResultInterpreter.bytes_to_Hash160str(v)
             else:
-                attribute_value = ClientResultInterpreter.bytes_to_int(attribute[1])
-            pair_attributes[attribute_name] = attribute_value
+                pair_attributes[k.split(b'_')[-1].decode()] = ClientResultInterpreter.bytes_to_int(v)
         return pair_attributes
 
 

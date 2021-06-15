@@ -7,7 +7,7 @@ import time
 
 from tests.utils import Hash160Str, Signer, WitnessScope, \
     gen_expiry_timestamp_and_str_in_seconds,\
-    ClientResultInterpreter, sleep_until
+    ClientResultInterpreter, sleep_until, sleep_for_next_block
 from neo_test_with_rpc import TestClient
 from neo3.contracts import NeoToken, GasToken
 neo, gas = NeoToken(), GasToken()
@@ -37,15 +37,15 @@ mint_ratio = 7 * DECIMAL_BASE
 fee_rate = 0 * DECIMAL_BASE
 try:
     administrating_client.invokefunction('addPair', [neo.hash, gas.hash, expiry_timestamp, expiry_str, mint_ratio, str(mint_ratio), fee_rate])
+    administrating_client.print_previous_result()
 except ValueError as e:
     if 'ASSERT is executed with false result.' in e.args[0]:
         print(e, end=' '); print('Maybe you have already added the Pair')
     else:
         raise e
-print()
 dev_client = TestClient(target_url, contract_hash, dev_wallet_hash, dev_wallet_address, 'dev.json', '1')
 dev_client.openwallet()
-time.sleep(15)
+sleep_for_next_block()
 neo_balance, gas_balance = dev_client.get_neo_balance(), dev_client.get_gas_balance()
 if neo_balance < 10 or gas_balance < 100e8:
     input(f'Warning: only f{neo_balance} NEOs and {gas_balance/1e8} left. \npress ENTER to continue')
@@ -58,9 +58,9 @@ except AssertionError as e:
     print('getCollaterals failed. Maybe you need to wait 15 seconds before running this test again')
     raise e
 dev_client.invokefunction("getPairsMap", params=[collaterals[0]], result_interpreted_as_iterator=True)
-pairs:Dict[int, Hash160Str] = ClientResultInterpreter.interpret_getPairsMap(dev_client.previous_result)
+pairs = ClientResultInterpreter.interpret_getPairsMap(dev_client.previous_result)
 print('pairs:', pairs)
-selected_pair = list(pairs.keys())[0]
+selected_pair = max(pairs.keys())
 dev_client.invokefunction("getPairAttributes", params=[selected_pair], result_interpreted_as_iterator=True)
 attributes = ClientResultInterpreter.interpret_getPairAttribtutes(dev_client.previous_result)
 print('attributes:', attributes)
@@ -81,7 +81,7 @@ dev_client.invokefunction("deposit",
     signers=[Signer(dev_wallet_hash, WitnessScope.Global)])
 dev_client.print_previous_result()
 
-time.sleep(15)
+sleep_for_next_block()
 
 print()
 print('check rcToken and rrToken balance after deposit:')
@@ -101,12 +101,13 @@ dev_client.invokefunction("repay",
 dev_client.print_previous_result()
 
 sleep_until(expiry_timestamp)
-time.sleep(15)
+sleep_for_next_block()
 
 dev_client.invokefunction("collect",
     params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 700000000],
     signers=[Signer(dev_wallet_hash, WitnessScope.Global)])
 dev_client.print_previous_result()
+assert dev_client.previous_result == 20792079
 
 dev_client.invokefunction("collect",
     params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 2800000000],

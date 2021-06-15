@@ -61,8 +61,7 @@ minColRatioMap = StorageMap(current_storage_context, 'minColRatioMap')
 # pairs: Dict[UInt160, Dict[UInt160, Dict[int, Dict[int, Dict[str, Any]]]]] = {}
 pairs_map = StorageMap(current_storage_context, b'pairs')
 # get(f'{collateral}{pairedToken}{expiry}{mintRatio}') for the index of a pair
-pair_max_index_key = b'pair_max_index'
-put(pair_max_index_key, 1)
+max_pair_index_key = b'max_pair_index'
 # pair: Dict[gen_pair_key, Any]; class Pair => attributes
 pair_map = StorageMap(current_storage_context, b'pair_')  # store attributes of pairs
 
@@ -269,7 +268,9 @@ def _insert_pair(active: bool, feeRate: int, mintRatio: int, expiry: int,
         Usually set to 0 when created.
     :return: the index of the new pair
     """
-    max_index = get(pair_max_index_key).to_int()
+    max_index = get(max_pair_index_key).to_int()
+    max_index = max_index + 1
+    put(max_pair_index_key, max_index)
     pair_map.put(gen_pair_key(max_index, "active"), active)
     pair_map.put(gen_pair_key(max_index, "feeRate"), feeRate)
     pair_map.put(gen_pair_key(max_index, "mintRatio"), mintRatio)
@@ -279,7 +280,6 @@ def _insert_pair(active: bool, feeRate: int, mintRatio: int, expiry: int,
     pair_map.put(gen_pair_key(max_index, "rcToken"), rcToken)
     pair_map.put(gen_pair_key(max_index, "rrToken"), rrToken)
     pair_map.put(gen_pair_key(max_index, "colTotal"), colTotal)
-    put(pair_max_index_key, max_index + 1)
     return max_index
 
 

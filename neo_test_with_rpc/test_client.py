@@ -1,4 +1,4 @@
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Any
 import base64
 import json
 import requests
@@ -7,22 +7,24 @@ from neo_test_with_rpc.retry import retry
 from tests.utils import Hash160Str, Signer
 from neo3.core.types import UInt160
 from neo3.contracts import NeoToken, GasToken
+
 neo, gas = NeoToken(), GasToken()
 
-RequestExceptions=(
+RequestExceptions = (
     requests.RequestException,
     requests.ConnectionError,
     requests.HTTPError,
     requests.Timeout,
-    )
+)
 request_timeout = None  # 20
 
 
 class TestClient:
-    def __init__(self, target_url: str, contract_scripthash: Hash160Str, wallet_scripthash:Hash160Str, wallet_address:str,
-                 wallet_path: str, wallet_password: str, session=requests.Session()):
+    def __init__(self, target_url: str, contract_scripthash: Hash160Str, wallet_scripthash: Hash160Str,
+                 wallet_address: str,
+                 wallet_path: str, wallet_password: str, with_print = True, session=requests.Session()):
         """
-        
+
         :param target_url: url to the rpc server affliated to neo-cli
         :param wallet_scripthash: scripthash of your wallet
         :param wallet_address: address of your wallet (starting with 'N'); "NVbGwMfRQVudTjWAUJwj4K68yyfXjmgbPp"
@@ -39,15 +41,16 @@ class TestClient:
         self.wallet_path = wallet_path
         self.wallet_password = wallet_password
         self.previous_post_data = None
-        
+        self.with_print = with_print
+    
     @staticmethod
     def request_body_builder(method, parameters: List):
-       return json.dumps({
-           "jsonrpc": "2.0",
-           "method": method,
-           "params": parameters,
-           "id": 1,
-       }, separators=(',', ':'))
+        return json.dumps({
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": parameters,
+            "id": 1,
+        }, separators=(',', ':'))
     
     @staticmethod
     def bytes_to_UInt160(bytestring: bytes):
@@ -64,7 +67,7 @@ class TestClient:
         return processed_struct
     
     @retry(RequestExceptions, tries=2, logger=None)
-    def meta_rpc_method(self, method:str, parameters:List, relay:bool=True) -> dict:
+    def meta_rpc_method(self, method: str, parameters: List, relay: bool = True) -> Any:
         post_data = self.request_body_builder(method, parameters)
         self.previous_post_data = post_data
         result = json.loads(self.session.post(self.target_url, post_data, timeout=request_timeout).text)
@@ -78,20 +81,21 @@ class TestClient:
             if relay and 'tx' in result['result']:
                 tx = result['result']['tx']
                 self.sendrawtransaction(tx)
-        self.previous_result = result
-        return result
+        self.previous_raw_result = result
+        self.previous_result = self.parse_raw_result(result)
+        return self.previous_result
     
     def print_previous_result(self):
-        print(self.previous_result['result']['stack'])
+        print(self.previous_result)
     
     @retry(RequestExceptions, tries=2, logger=None)
-    def sendrawtransaction(self, transaction:str):
+    def sendrawtransaction(self, transaction: str):
         """
         :param transaction: result['tx']. e.g. "ALmNfAb4lqIAAA...="
         """
         return self.meta_rpc_method("sendrawtransaction", [transaction], relay=False)
     
-    def openwallet(self, path: str=None, password: str=None) -> dict:
+    def openwallet(self, path: str = None, password: str = None) -> dict:
         """
         WARNING: usually you should use this method along with __init__.
         Use another TestClient object to open another wallet
@@ -100,14 +104,40 @@ class TestClient:
             path = self.wallet_path
         if not password:
             password = self.wallet_password
-        open_wallet_raw_result = self.meta_rpc_method("openwallet", [path, password])
-        if open_wallet_raw_result['result'] != True:
+        open_wallet_result = self.meta_rpc_method("openwallet", [path, password])
+        if open_wallet_result != True:
             raise ValueError(f'Failed to open wallet {path} with given password.')
-        return open_wallet_raw_result
+        return open_wallet_result
     
-    def invokefunction_of_any_contract(self, scripthash: Hash160Str, operation:str,
-                        params:List[Union[str, int, Hash160Str, UInt160]] = None,
-                        signers:List[Signer]=None, result_interpreted_as_iterator = False) -> dict:
+    @staticmethod
+    def parse_raw_result(raw_result: dict):
+        def parse_single_item(item: Union[Dict, List]):
+            if 'iterator' in item:
+                item = item['iterator']
+                return {parse_single_item(i['value'][0]):parse_single_item(i['value'][1]) for i in item}
+            type, value = item['type'], item['value']
+            if type == 'Integer':
+                return int(value)
+            elif type == 'ByteString':
+                return base64.b64decode(value)
+            elif type == 'Array':
+                return [parse_single_item(i) for i in value]
+            elif type == 'Map':
+                return {parse_single_item(i['key']): parse_single_item(i['value']) for i in value}
+            else:
+                raise ValueError(f'Unknown type {type}')
+        
+        result: Dict = raw_result['result']
+        if type(result) is not dict or 'stack' not in result:
+            return result
+        result: List = result['stack'][0]
+        return parse_single_item(result)
+    
+    def invokefunction_of_any_contract(self, scripthash: Hash160Str, operation: str,
+                                       params: List[Union[str, int, Hash160Str, UInt160]] = None,
+                                       signers: List[Signer] = None) -> dict:
+        if self.with_print:
+            print(f'invoke function {operation}')
         def parse_params(param: Union[str, int, Hash160Str, UInt160, bytes]) -> Dict[str, str]:
             type_param = type(param)
             if type_param is UInt160:
@@ -137,9 +167,13 @@ class TestClient:
                         'type': 'String',
                         'value': param.decode(),
                     }
-            else:
-                raise ValueError(f'Unable to handle param {param} with type {type_param}')
-    
+            elif type_param is list:
+                return {
+                    'type': 'Array',
+                    'value': [parse_params(param_) for param_ in param]
+                }
+            raise ValueError(f'Unable to handle param {param} with type {type_param}')
+        
         if not params:
             params = []
         if not signers:
@@ -151,19 +185,17 @@ class TestClient:
             list(map(lambda signer: signer.to_dict(), signers)),
         ]
         result = self.meta_rpc_method('invokefunction', parameters)
-        if result_interpreted_as_iterator:
-            result = result['result']['stack'][0]['iterator']
-            self.previous_result = result
         return result
-
-    def invokefunction(self, operation:str, params:List[Union[str, int, Hash160Str, UInt160]] = None,
-                       signers:List[Signer]=None, result_interpreted_as_iterator = False) -> dict:
-        return self.invokefunction_of_any_contract(self.contract_scripthash, operation, params,
-                       signers, result_interpreted_as_iterator)
     
-    def sendfrom(self, asset_id:Hash160Str, from_address:str, to_address:str, value:int, signers:List[Signer]=None):
+    def invokefunction(self, operation: str, params: List[Union[str, int, Hash160Str, UInt160]] = None,
+                       signers: List[Signer] = None) -> dict:
+        return self.invokefunction_of_any_contract(self.contract_scripthash, operation, params,
+                                                   signers)
+    
+    def sendfrom(self, asset_id: Hash160Str, from_address: str, to_address: str, value: int,
+                 signers: List[Signer] = None):
         """
-        
+
         :param asset_id: NEO: '0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5';
             GAS: '0xd2a4cff31913016155e38e474a2c06d08be276cf'
         :param from_address: "NgaiKFjurmNmiRzDRQGs44yzByXuSkdGPF"
@@ -180,19 +212,19 @@ class TestClient:
             signers
         ])
     
-    def sendtoaddress(self, asset_id:Hash160Str, address, value:int):
+    def sendtoaddress(self, asset_id: Hash160Str, address, value: int):
         return self.meta_rpc_method('sendtoaddress', [
             asset_id.string, address, value,
         ])
     
-    def send_neo_to_address(self, to_address: Hash160Str, value:int):
+    def send_neo_to_address(self, to_address: Hash160Str, value: int):
         return self.sendtoaddress(Hash160Str.from_UInt160(NeoToken().hash), to_address, value)
     
-    def send_gas_to_address(self, to_address: Hash160Str, value:int):
+    def send_gas_to_address(self, to_address: Hash160Str, value: int):
         return self.sendtoaddress(Hash160Str.from_UInt160(GasToken().hash), to_address, value)
-
+    
     def getwalletbalance(self, asset_id: Hash160Str) -> int:
-        return int(self.meta_rpc_method('getwalletbalance', [asset_id.to_str()])['result']['balance'])
+        return int(self.meta_rpc_method('getwalletbalance', [asset_id.to_str()])['balance'])
     
     def get_neo_balance(self) -> int:
         return self.getwalletbalance(Hash160Str.from_UInt160(NeoToken().hash))
@@ -201,6 +233,4 @@ class TestClient:
         return self.getwalletbalance(Hash160Str.from_UInt160(GasToken().hash))
     
     def get_rToken_balance(self, rToken_address: Hash160Str):
-        raw_result = self.invokefunction_of_any_contract(rToken_address, "balanceOf", [self.wallet_scripthash])
-        self.previous_result = raw_result
-        return int(raw_result['result']['stack'][0]['value'])
+        return self.invokefunction_of_any_contract(rToken_address, "balanceOf", [self.wallet_scripthash])

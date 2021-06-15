@@ -29,9 +29,11 @@ DECIMAL_BASE = 100_000_000
 mint_ratio = 7 * DECIMAL_BASE
 fee_rate = int(0.7 * DECIMAL_BASE)
 administrating_client.invokefunction('deploy', [consensus_wallet_hash], signers=[consensus_signer])
+administrating_client.print_previous_result()
 sleep_for_next_block()
 try:
     administrating_client.invokefunction('addPair', [neo.hash, gas.hash, expiry_timestamp, expiry_str, mint_ratio, str(mint_ratio), fee_rate])
+    administrating_client.print_previous_result()
 except ValueError as e:
     if 'ASSERT is executed with false result.' in e.args[0]:
         print(e, end=' '); print('Maybe you have already added the Pair')
@@ -49,19 +51,19 @@ sleep_for_next_block()
 neo_balance, gas_balance = dev_client.get_neo_balance(), dev_client.get_gas_balance()
 if neo_balance < 1000 or gas_balance < 100e8:
     input(f'Warning: only f{neo_balance} NEOs and {gas_balance/1e8} left. \npress ENTER to continue')
-dev_client.invokefunction("getCollaterals", result_interpreted_as_iterator=True)
-collaterals = ClientResultInterpreter.interpret_getCollaterals(dev_client.previous_result)
+raw_collaterals = dev_client.invokefunction("getCollaterals")
+collaterals = ClientResultInterpreter.interpret_getCollaterals(raw_collaterals)
 print('collaterals:', collaterals)
 try:
     assert Hash160Str.from_UInt160(neo.hash) in collaterals
 except AssertionError as e:
     print('getCollaterals failed. Maybe you need to wait 15 seconds before running this test again')
     raise e
-dev_client.invokefunction("getPairsMap", params=[collaterals[0]], result_interpreted_as_iterator=True)
-pairs:Dict[int, Hash160Str] = ClientResultInterpreter.interpret_getPairsMap(dev_client.previous_result)
+pairs = dev_client.invokefunction("getPairsMap", params=collaterals)
+pairs:Dict[int, Dict] = ClientResultInterpreter.interpret_getPairsMap(pairs)
 print('pairs:', pairs)
-selected_pair = list(pairs.keys())[0]
-dev_client.invokefunction("getPairAttributes", params=[selected_pair], result_interpreted_as_iterator=True)
+selected_pair = max(pairs.keys())
+dev_client.invokefunction("getPairAttributes", params=[selected_pair])
 attributes = ClientResultInterpreter.interpret_getPairAttribtutes(dev_client.previous_result)
 print('attributes:', attributes)
 print()
@@ -109,6 +111,7 @@ dev_client.invokefunction("collect",
     params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 700000000],
     signers=[Signer(dev_wallet_hash, WitnessScope.Global)])
 dev_client.print_previous_result()  # should collect 6237624 GAS
+assert dev_client.previous_result == 6237624
 
 dev_client.invokefunction("collect",
     params=[dev_wallet_hash, attributes['collateralToken'], attributes['pairedToken'], attributes['expiry'], attributes['mintRatio'], 8000000000],
@@ -118,19 +121,17 @@ dev_client.print_previous_result()
 sleep_for_next_block()
 
 administrating_client.openwallet()
-administrating_client.invokefunction('getFeesMap', result_interpreted_as_iterator=True)
+administrating_client.invokefunction('getFeesMap')
 feesMap = ClientResultInterpreter.interpret_getFeesMap(administrating_client.previous_result)
 print('feesMap:', feesMap)  # should have 7 NEO
 
-print('collectFee:')
 administrating_client.invokefunction('collectFee', [gas.hash])
 administrating_client.print_previous_result()
 
-print('collectFees:')
 administrating_client.invokefunction('collectFees')
 administrating_client.print_previous_result()
 
 sleep_for_next_block()
-administrating_client.invokefunction('getFeesMap', result_interpreted_as_iterator=True)
+administrating_client.invokefunction('getFeesMap')
 feesMap = ClientResultInterpreter.interpret_getFeesMap(administrating_client.previous_result)
 print('feesMap:', feesMap)
