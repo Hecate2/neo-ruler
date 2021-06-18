@@ -44,6 +44,14 @@ The following figure shows the 4 steps of a loan operated by ruler and the marke
   - All the `Pair` objects and attributes of `Pair` are managed by administrator.
   - Borrowers should specify all the attributes of an existing `Pair` to borrow from that pair contract. 
 
+#### Build your ruler
+
+`pip install neo3-boa==0.8.2`
+
+`neo3-boa ruler.py`
+
+And `deploy ruler.nef` in neo-cli! Remember to invoke its `deploy` method to set the administrator.
+
 #### Major APIs of solidity implementation
 
 [RulerCore.sol](https://github.com/Ruler-Protocol/ruler-core-public/blob/1156cd52147efffb8cbd68508875010ef31acc38/contracts/RulerCore.sol#L242)
@@ -107,7 +115,7 @@ function flashFee
 
 #### Management of fees
 
-Part of paired tokens are marked as fees when borrowers `repay`. Part of collaterals are marked as fees when lenders `collect`. 
+Part of paired tokens are marked as fees when borrowers `repay`. Part of collaterals are marked as fees when lenders `collect`. Administrator can set the fee rate and the fee receiver.
 
 #### Tests
 
@@ -136,7 +144,7 @@ no support for returning multiple values
 
 Cannot use wallet with Python SDK
 
-#### Testing tactics
+#### Testing & debugging tactics
 
 - VM-based
   - Use `ruler_test.py` to run scripts on `neo3vm`, utilizing `neo-mamba`.
@@ -149,7 +157,7 @@ Cannot use wallet with Python SDK
     - Difficult to know the reason of exceptions raised from inside the `vm`
 - private-chain-based
   - run a private chain with a consensus node and an outer node. The outer node accepts RPC requests from Python, and is run in a visual studio C# debugger with source codes of NEO.
-  - Assisted by [DumpNef](https://github.com/devhawk/DumpNef), you can relate the InstructionPointer of the vm to the bytecodes in `.nef` files and the original Python codes of contract.
+  - Assisted by [DumpNef](https://github.com/devhawk/DumpNef), you can relate the InstructionPointer of the vm to the bytecodes in `.nef` files and the original Python codes of contract. Create breakpoints in `ExecutionEngine.cs` to debug at assembly level.
   - Pros:
     - Easy to watch the internal procedures in the blockchain. Easy to detect errors.
     - Almost the same as production environment
