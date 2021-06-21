@@ -118,6 +118,8 @@ class TestClient:
             type, value = item['type'], item['value']
             if type == 'Integer':
                 return int(value)
+            elif type == 'Boolean':
+                return value
             elif type == 'ByteString':
                 return base64.b64decode(value)
             elif type == 'Array':
