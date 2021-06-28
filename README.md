@@ -44,13 +44,19 @@ The following figure shows the 4 steps of a loan operated by ruler and the marke
   - All the `Pair` objects and attributes of `Pair` are managed by administrator.
   - Borrowers should specify all the attributes of an existing `Pair` to borrow from that pair contract. 
 
-#### Build your ruler
+#### Build and deploy your ruler
 
 `pip install neo3-boa==0.8.2`
 
+First you should compile `rToken.py` with the command `neo3-boa rToken.py`. This contract is used to manage rTokens, and is dynamically deployed by `ruler` whenever new pairs are added. 
+
+Then run `python get_nef_bytes.py` to print `rToken.nef` as bytes. Paste the bytes in `ruler.py` at the line`rTokenTemplateNef: bytes = b'NEF3neo3-boa by COZ-0.8.1.0 ...`
+
+Now compile `ruler.py` with
+
 `neo3-boa ruler.py`
 
-And `deploy ruler.nef` in neo-cli! Remember to invoke its `deploy` method to set the administrator.
+And deploy your `ruler.nef` on the neo3 blockchain with the command`deploy ruler.nef` in neo-cli. Remember to invoke the `deploy` method of the `ruler` contract to set the administrator. You can invoke the method using an RPC call, implemented by `tests/flashLoanRate_administration_test.py`. Read and understand and edit the test code before running it!
 
 #### Major APIs of solidity implementation
 
