@@ -1,3 +1,3 @@
-requests==2.24.0
-neo_mamba==0.6
+requests
+neo_mamba
 decorator==4.4.2

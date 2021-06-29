@@ -1,3 +1,5 @@
+Python 3.8 is recommended for this project.
+
 #### Intro
 
 `ruler.py` allows everyone to borrow paired token by paying a sum of collateral token. 
@@ -151,6 +153,8 @@ no support for returning multiple values
 Cannot use wallet with Python SDK
 
 #### Testing & debugging tactics
+
+`pip install -r requirements.txt`
 
 - VM-based
   - Use `ruler_test.py` to run scripts on `neo3vm`, utilizing `neo-mamba`.
