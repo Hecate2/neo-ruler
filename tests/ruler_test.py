@@ -20,6 +20,8 @@ DECIMAL_BASE = 100_000_000
 mint_ratio = 7 * DECIMAL_BASE
 fee_rate = 0 * DECIMAL_BASE
 
+engine.invoke_method_with_print('deploy', [contract_owner_hash])
+
 engine.invoke_method_with_print("addPair", params=[neo.hash, gas.hash, _30_days_later_ending_milisecond, _30_days_later_date_str, mint_ratio, str(mint_ratio), fee_rate])
 assert engine.state == VMState.HALT and engine.result_stack.peek() == IntegerStackItem(1)
 engine.invoke_method_with_print("getCollaterals", result_interpreted_as_iterator=True, further_interpreter=EngineResultInterpreter.interpret_getCollaterals)
@@ -55,7 +57,9 @@ print('invoke method balanceOf my NEO:', end=' '); engine.print_results()
 engine.invoke_method_with_print("repay", params=[contract_owner_hash, pair_attributes['collateralToken'], pair_attributes['pairedToken'], pair_attributes['expiry'], pair_attributes['mintRatio'], 700000000])
 engine.get_rToken_balance(rrToken_address, contract_owner_hash)
 print('balanceOf my rrToken:', end=' '); engine.print_results()
-engine.invoke_method_with_print("repay", params=[contract_owner_hash, pair_attributes['collateralToken'], pair_attributes['pairedToken'], pair_attributes['expiry'], pair_attributes['mintRatio'], 1447000000])  # larger amount leads to assert False
+
+# larger amount leads to assert False
+engine.invoke_method_with_print("repay", params=[contract_owner_hash, pair_attributes['collateralToken'], pair_attributes['pairedToken'], pair_attributes['expiry'], pair_attributes['mintRatio'], 1447000000])
 engine.get_rToken_balance(rrToken_address, contract_owner_hash)
 print('balanceOf my rrToken:', end=' '); engine.print_results()
 engine.invoke_method_of_arbitrary_contract(neo.hash, 'balanceOf', [contract_owner_hash])

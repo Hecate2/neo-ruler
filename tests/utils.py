@@ -5,7 +5,7 @@ import base64
 import time
 import datetime
 from math import ceil, log
-from neo3.core.types import UInt160
+from neo3.core.types import UInt160, UInt256
 
 
 class HashStr(str):
@@ -36,6 +36,13 @@ class Hash256Str(HashStr):
             string = '0x' + string
         assert len(string) == 66
         super().__init__(string)
+
+    @classmethod
+    def from_UInt256(cls, u: UInt256):
+        u_bytearray = bytearray(u._data)
+        u_bytearray.reverse()
+        hash256str = u_bytearray.hex()
+        return cls(hash256str)
 
 
 class Hash160Str(HashStr):

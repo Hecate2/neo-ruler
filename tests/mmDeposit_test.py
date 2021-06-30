@@ -19,6 +19,8 @@ DECIMAL_BASE = 100_000_000
 mint_ratio = 7 * DECIMAL_BASE
 fee_rate = 0 * DECIMAL_BASE
 
+engine.invoke_method_with_print('deploy', [contract_owner_hash])
+
 engine.invoke_method_with_print("addPair", params=[neo.hash, gas.hash, _30_days_later_ending_milisecond, _30_days_later_date_str, mint_ratio, str(mint_ratio), fee_rate])
 assert engine.state == VMState.HALT and engine.result_stack.peek() == IntegerStackItem(1)
 engine.invoke_method_with_print("getCollaterals", result_interpreted_as_iterator=True, further_interpreter=EngineResultInterpreter.interpret_getCollaterals)
