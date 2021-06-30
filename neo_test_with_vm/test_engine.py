@@ -3,13 +3,13 @@ import os
 from functools import partial
 from typing import List, Union, Tuple, Any, Callable
 
-from tests.utils import Hash160Str, EngineResultInterpreter
+from tests.utils import Hash160Str, Hash256Str, EngineResultInterpreter
 
 from neo3 import vm, contracts, blockchain
 from neo3.contracts import ApplicationEngine, interop
 from neo3.contracts.native import NativeContract
 from neo3.core import types
-from neo3.core.types import UInt160
+from neo3.core.types import UInt160, UInt256
 from neo3.network import payloads
 from neo3.storage import StorageContext
 from neo3.contracts import NeoToken, GasToken
@@ -121,11 +121,15 @@ class TestEngine:
     def param_auto_checker(param: Any) -> Any:
         type_param = type(param)
         if type_param is Hash160Str:
-            return types.UInt160.from_string(str(param)[2:]).to_array()
+            return param.to_UInt160().to_array()
+        if type_param is Hash256Str:
+            return param.to_UInt256().to_array()
         elif type_param is str:
-            if len(param) == 40:
+            hex_alphabet = set('0123456789abcdef')
+            # WARNING: a dangerous guess here
+            if len(param) == 40 and set(param).issubset(hex_alphabet):
                 return types.UInt160.from_string(param).to_array()
-            elif len(param) == 42 and param.startswith('0x'):
+            elif len(param) == 42 and param.startswith('0x') and set(param[0:2]).issubset(hex_alphabet):
                 return types.UInt160.from_string(param[2:]).to_array()
             else:
                 return param
