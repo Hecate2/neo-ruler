@@ -44,6 +44,9 @@ class Hash256Str(HashStr):
         hash256str = u_bytearray.hex()
         return cls(hash256str)
 
+    def to_UInt256(self):
+        return UInt256.from_string(self.string[2:])
+
 
 class Hash160Str(HashStr):
     """
@@ -65,7 +68,7 @@ class Hash160Str(HashStr):
         return cls(hash160str)
     
     def to_UInt160(self):
-        return UInt160.from_string(self.string)
+        return UInt160.from_string(self.string[2:])
     
 
 def gen_expiry_timestamp_and_str(days: int) -> Tuple[int, str]:
