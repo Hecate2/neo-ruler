@@ -114,14 +114,18 @@ class TestClient:
         def parse_single_item(item: Union[Dict, List]):
             if 'iterator' in item:
                 item = item['iterator']
-                return {parse_single_item(i['value'][0]):parse_single_item(i['value'][1]) for i in item}
-            type, value = item['type'], item['value']
+                return {parse_single_item(i['value'][0]): parse_single_item(i['value'][1]) for i in item}
+            type = item['type']
+            if type == 'Any' and 'value' not in item:
+                return
+            else:
+                value = item['value']
             if type == 'Integer':
                 return int(value)
             elif type == 'Boolean':
                 return value
             elif type == 'ByteString':
-                return base64.b64decode(value)
+                return base64.b64decode(value).decode()
             elif type == 'Array':
                 return [parse_single_item(i) for i in value]
             elif type == 'Map':
@@ -173,12 +177,11 @@ class TestClient:
                     'value': param,
                 }
             elif type_param is bytes:
-                if param.endswith(b'='):
-                    # not the best way to judge, but maybe no better method
-                    return {
-                        'type': 'String',
-                        'value': param.decode(),
-                    }
+                # not the best way to judge, but maybe no better method
+                return {
+                    'type': 'String',
+                    'value': param.decode(),
+                }
             elif type_param is list:
                 return {
                     'type': 'Array',
