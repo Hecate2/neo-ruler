@@ -196,6 +196,7 @@ Intuitively, you may want to deploy your smart contract onto your private blockc
    ```python
    from neo3 import vm, contracts
    from neo3.network import payloads
+   from neo3.contracts import ApplicationEngine
    tx = payloads.Transaction._serializable_init()
    engine = ApplicationEngine(contracts.TriggerType.APPLICATION, tx, snapshot, 0, test_mode=True)
    ```
