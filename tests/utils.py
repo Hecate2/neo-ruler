@@ -71,6 +71,15 @@ class Hash160Str(HashStr):
         return UInt160.from_string(self.string[2:])
     
 
+class PublicKeyStr(HashStr):
+    """
+    03f6829c418b7272efa93b19cc3336506fb84efac6a758be3d6d5216d0fbc4d6dd
+    """
+    def __init__(self, string: str):
+        assert len(string) == 66
+        super().__init__(string)
+
+
 def gen_expiry_timestamp_and_str(days: int) -> Tuple[int, str]:
     today = datetime.date.today()
     days_later = today + datetime.timedelta(days=days)

@@ -4,7 +4,7 @@ import json
 import requests
 from neo_test_with_rpc.retry import retry
 
-from tests.utils import Hash160Str, Hash256Str, Signer
+from tests.utils import Hash160Str, Hash256Str, PublicKeyStr, Signer
 from neo3.core.types import UInt160, UInt256
 from neo3.contracts import NeoToken, GasToken
 
@@ -164,6 +164,11 @@ class TestClient:
             elif type_param is Hash256Str:
                 return {
                     'type': 'Hash256',
+                    'value': str(param),
+                }
+            elif type_param is PublicKeyStr:
+                return {
+                    'type': 'PublicKey',
                     'value': str(param),
                 }
             elif type_param is int:
