@@ -22,7 +22,7 @@ request_timeout = None  # 20
 class TestClient:
     def __init__(self, target_url: str, contract_scripthash: Hash160Str, wallet_scripthash: Hash160Str,
                  wallet_address: Hash160Str,
-                 wallet_path: str, wallet_password: str, with_print = True, session=requests.Session()):
+                 wallet_path: str, wallet_password: str, with_print=True, session=requests.Session()):
         """
 
         :param target_url: url to the rpc server affliated to neo-cli
@@ -67,7 +67,7 @@ class TestClient:
         return processed_struct
     
     @retry(RequestExceptions, tries=2, logger=None)
-    def meta_rpc_method(self, method: str, parameters: List, relay: bool = True) -> Any:
+    def meta_rpc_method(self, method: str, parameters: List, relay: bool = True, do_not_raise_on_result=False) -> Any:
         post_data = self.request_body_builder(method, parameters)
         self.previous_post_data = post_data
         result = json.loads(self.session.post(self.target_url, post_data, timeout=request_timeout).text)
@@ -75,9 +75,12 @@ class TestClient:
             raise ValueError(result['error']['message'])
         if type(result['result']) is dict:
             if 'exception' in result['result'] and result['result']['exception'] != None:
-                print(post_data)
-                print(result)
-                raise ValueError(result['result']['exception'])
+                if do_not_raise_on_result:
+                    return result['result']['exception']
+                else:
+                    print(post_data)
+                    print(result)
+                    raise ValueError(result['result']['exception'])
             if relay and 'tx' in result['result']:
                 tx = result['result']['tx']
                 self.sendrawtransaction(tx)
@@ -125,7 +128,12 @@ class TestClient:
             elif type == 'Boolean':
                 return value
             elif type == 'ByteString':
-                return base64.b64decode(value).decode()
+                try:
+                    return base64.b64decode(value).decode()
+                except UnicodeDecodeError as e:
+                    # may be an N3 address starting with 'N'
+                    # TODO: decode to N3 address
+                    return value
             elif type == 'Array':
                 return [parse_single_item(i) for i in value]
             elif type == 'Map':
@@ -141,9 +149,10 @@ class TestClient:
     
     def invokefunction_of_any_contract(self, scripthash: Hash160Str, operation: str,
                                        params: List[Union[str, int, Hash160Str, UInt160]] = None,
-                                       signers: List[Signer] = None) -> dict:
+                                       signers: List[Signer] = None, relay=True, do_not_raise_on_result=False) -> dict:
         if self.with_print:
             print(f'invoke function {operation}')
+        
         def parse_params(param: Union[str, int, Hash160Str, UInt160, bytes]) -> Dict[str, str]:
             type_param = type(param)
             if type_param is UInt160:
@@ -204,13 +213,14 @@ class TestClient:
             list(map(lambda param: parse_params(param), params)),
             list(map(lambda signer: signer.to_dict(), signers)),
         ]
-        result = self.meta_rpc_method('invokefunction', parameters)
+        result = self.meta_rpc_method('invokefunction', parameters, relay=relay,
+                                      do_not_raise_on_result=do_not_raise_on_result)
         return result
     
     def invokefunction(self, operation: str, params: List[Union[str, int, Hash160Str, UInt160]] = None,
-                       signers: List[Signer] = None) -> dict:
+                       signers: List[Signer] = None, relay=True, do_not_raise_on_result=False) -> dict:
         return self.invokefunction_of_any_contract(self.contract_scripthash, operation, params,
-                                                   signers)
+                                                   signers, relay=relay, do_not_raise_on_result=do_not_raise_on_result)
     
     def sendfrom(self, asset_id: Hash160Str, from_address: str, to_address: str, value: int,
                  signers: List[Signer] = None):
