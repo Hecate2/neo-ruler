@@ -192,10 +192,16 @@ class TestClient:
                 }
             elif type_param is bytes:
                 # not the best way to judge, but maybe no better method
-                return {
-                    'type': 'String',
-                    'value': param.decode(),
-                }
+                try:
+                    return {
+                        'type': 'String',
+                        'value': param.decode(),
+                    }
+                except UnicodeDecodeError:
+                    return {
+                        'type': 'ByteArray',
+                        'value': base64.b64encode(param).decode()
+                    }
             elif type_param is list:
                 return {
                     'type': 'Array',
