@@ -102,6 +102,7 @@ class TestEngine:
             setattr(self, method_name, partial_function)
             partial_function_with_print = partial(self.invoke_method_with_print, method_name)
             setattr(self, method_name_with_print, partial_function_with_print)
+        self.previous_processed_result = None
     
     def deploy_another_contract(self, nef_path: str, manifest_path: str = '') -> UInt160:
         """
@@ -284,4 +285,7 @@ class TestEngine:
         self.invoke_method_of_arbitrary_contract(rToken_address, "balanceOf", [owner])
         
     def __repr__(self):
-        return f'class TestEngine: {self.state} {self.previous_processed_result}'
+        if self.previous_processed_result:
+            return f'class TestEngine: {self.state} {self.previous_processed_result}'
+        else:
+            return f'class TestEngine: {self.state}; no previous_processed_result'
