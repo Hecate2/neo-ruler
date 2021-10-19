@@ -90,7 +90,7 @@ class TestEngine:
                                signers))
             self.signers = signers
         else:
-            self.signers = [UInt160()]
+            self.signers = []
 
         # add methods to this class for users to call contract methods
         for method in self.manifest.abi.methods:
