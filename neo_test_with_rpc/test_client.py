@@ -91,7 +91,6 @@ class TestClient:
     def print_previous_result(self):
         print(self.previous_result)
     
-    @retry(RequestExceptions, tries=2, logger=None)
     def sendrawtransaction(self, transaction: str):
         """
         :param transaction: result['tx']. e.g. "ALmNfAb4lqIAAA...="
@@ -227,6 +226,10 @@ class TestClient:
                        signers: List[Signer] = None, relay=True, do_not_raise_on_result=False) -> dict:
         return self.invokefunction_of_any_contract(self.contract_scripthash, operation, params,
                                                    signers, relay=relay, do_not_raise_on_result=do_not_raise_on_result)
+    
+    def invokescript(self, script: str, relay=False) -> dict:
+        result = self.meta_rpc_method('invokescript', [script], relay=relay)
+        return result
     
     def sendfrom(self, asset_id: Hash160Str, from_address: str, to_address: str, value: int,
                  signers: List[Signer] = None):
