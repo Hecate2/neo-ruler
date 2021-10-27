@@ -42,7 +42,9 @@ class TestClient:
         self.wallet_password = wallet_password
         self.previous_post_data = None
         self.with_print = with_print
-    
+        self.previous_raw_result = None
+        self.previous_result = None
+
     @staticmethod
     def request_body_builder(method, parameters: List):
         return json.dumps({
@@ -143,6 +145,8 @@ class TestClient:
         result: Dict = raw_result['result']
         if type(result) is not dict or 'stack' not in result:
             return result
+        if not result['stack']:
+            return result['stack']
         result: List = result['stack'][0]
         return parse_single_item(result)
     
