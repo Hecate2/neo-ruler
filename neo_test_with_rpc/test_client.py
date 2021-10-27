@@ -231,7 +231,9 @@ class TestClient:
         return self.invokefunction_of_any_contract(self.contract_scripthash, operation, params,
                                                    signers, relay=relay, do_not_raise_on_result=do_not_raise_on_result)
     
-    def invokescript(self, script: str, signers: List[Signer] = None, relay=False) -> dict:
+    def invokescript(self, script: Union[str, bytes], signers: List[Signer] = None, relay=False) -> dict:
+        if type(script) is bytes:
+            script: str = script.decode()
         if not signers:
             signers = [self.signer]
         result = self.meta_rpc_method(
