@@ -44,7 +44,7 @@ class TestClient:
         self.with_print = with_print
         self.previous_raw_result = None
         self.previous_result = None
-
+    
     @staticmethod
     def request_body_builder(method, parameters: List):
         return json.dumps({
@@ -98,6 +98,9 @@ class TestClient:
         :param transaction: result['tx']. e.g. "ALmNfAb4lqIAAA...="
         """
         return self.meta_rpc_method("sendrawtransaction", [transaction], relay=False)
+    
+    def getrawtransaction(self, transaction_hash: Hash256Str, verbose: bool = False):
+        return self.meta_rpc_method("getrawtransaction", [str(transaction_hash), verbose], relay=False)
     
     def openwallet(self, path: str = None, password: str = None) -> dict:
         """
@@ -169,10 +172,10 @@ class TestClient:
                     'value': str(param),
                 }
             elif type_param is UInt256:
-                    return {
-                        'type': 'Hash256',
-                        'value': str(Hash256Str.from_UInt256(param)),
-                    }
+                return {
+                    'type': 'Hash256',
+                    'value': str(Hash256Str.from_UInt256(param)),
+                }
             elif type_param is Hash256Str:
                 return {
                     'type': 'Hash256',
