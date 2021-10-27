@@ -227,8 +227,13 @@ class TestClient:
         return self.invokefunction_of_any_contract(self.contract_scripthash, operation, params,
                                                    signers, relay=relay, do_not_raise_on_result=do_not_raise_on_result)
     
-    def invokescript(self, script: str, relay=False) -> dict:
-        result = self.meta_rpc_method('invokescript', [script], relay=relay)
+    def invokescript(self, script: str, signers: List[Signer] = None, relay=False) -> dict:
+        if not signers:
+            signers = [self.signer]
+        result = self.meta_rpc_method(
+            'invokescript',
+            [script, list(map(lambda signer: signer.to_dict(), signers))],
+            relay=relay)
         return result
     
     def sendfrom(self, asset_id: Hash160Str, from_address: str, to_address: str, value: int,
