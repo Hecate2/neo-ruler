@@ -22,7 +22,8 @@ request_timeout = None  # 20
 class TestClient:
     def __init__(self, target_url: str, contract_scripthash: Hash160Str, wallet_scripthash: Hash160Str,
                  wallet_address: Hash160Str,
-                 wallet_path: str, wallet_password: str, with_print=True, session=requests.Session()):
+                 wallet_path: str, wallet_password: str, with_print=True, session=requests.Session(),
+                 verbose_return=False):
         """
 
         :param target_url: url to the rpc server affliated to neo-cli
@@ -31,6 +32,9 @@ class TestClient:
         :param wallet_path: 'wallets/dev.json'
         :param wallet_password: '12345678'
         :param session: requests.Session
+        :param verbose_return: return result, raw_result, post_data.
+            This is to avoid reading previous_result for concurrency safety.
+            For concurrency, set verbose_return=True
         """
         self.target_url = target_url
         self.contract_scripthash = contract_scripthash
@@ -44,7 +48,8 @@ class TestClient:
         self.with_print = with_print
         self.previous_raw_result = None
         self.previous_result = None
-    
+        self.verbose_return = verbose_return
+
     @staticmethod
     def request_body_builder(method, parameters: List):
         return json.dumps({
@@ -88,6 +93,8 @@ class TestClient:
                 self.sendrawtransaction(tx)
         self.previous_raw_result = result
         self.previous_result = self.parse_raw_result(result)
+        if self.verbose_return:
+            return self.previous_result, result, post_data
         return self.previous_result
     
     def print_previous_result(self):
@@ -111,7 +118,10 @@ class TestClient:
             path = self.wallet_path
         if not password:
             password = self.wallet_password
-        open_wallet_result = self.meta_rpc_method("openwallet", [path, password])
+        if self.verbose_return:
+            open_wallet_result, _, _ = self.meta_rpc_method("openwallet", [path, password])
+        else:
+            open_wallet_result = self.meta_rpc_method("openwallet", [path, password])
         if open_wallet_result != True:
             raise ValueError(f'Failed to open wallet {path} with given password.')
         return open_wallet_result
