@@ -21,9 +21,8 @@ request_timeout = None  # 20
 
 class TestClient:
     def __init__(self, target_url: str, contract_scripthash: Hash160Str, wallet_scripthash: Hash160Str,
-                 wallet_address: Hash160Str,
-                 wallet_path: str, wallet_password: str, with_print=True, session=requests.Session(),
-                 verbose_return=False):
+                 wallet_address: str, wallet_path: str, wallet_password: str,
+                 with_print=True, session=requests.Session(), verbose_return=False):
         """
 
         :param target_url: url to the rpc server affliated to neo-cli
