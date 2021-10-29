@@ -23,6 +23,16 @@ class HashStr(str):
     
     def __repr__(self):
         return self.string
+    
+    def __eq__(self, other):
+        if isinstance(other, HashStr):
+            return self.string == other.string
+        return False
+
+    def __ne__(self, other):
+        if isinstance(other, HashStr):
+            return self.string != other.string
+        return True
 
 
 class Hash256Str(HashStr):
