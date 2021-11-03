@@ -54,6 +54,10 @@ class Hash256Str(HashStr):
         hash256str = u_bytearray.hex()
         return cls(hash256str)
 
+    @classmethod
+    def zero(cls):
+        return cls.from_UInt256(UInt256.zero())
+
     def to_UInt256(self):
         return UInt256.from_string(self.string[2:])
 
@@ -76,7 +80,11 @@ class Hash160Str(HashStr):
         u_bytearray.reverse()
         hash160str = u_bytearray.hex()
         return cls(hash160str)
-    
+
+    @classmethod
+    def zero(cls):
+        return cls.from_UInt160(UInt160.zero())
+
     def to_UInt160(self):
         return UInt160.from_string(self.string[2:])
     
