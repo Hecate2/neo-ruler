@@ -130,29 +130,33 @@ class TestClient:
         def parse_single_item(item: Union[Dict, List]):
             if 'iterator' in item:
                 item = item['iterator']
-                return {parse_single_item(i['value'][0]): parse_single_item(i['value'][1]) for i in item}
-            type = item['type']
-            if type == 'Any' and 'value' not in item:
+                if item:
+                    if type(item[0]['value']) is not list:
+                        return [parse_single_item(i) for i in item]
+                    else:
+                        return {parse_single_item(i['value'][0]): parse_single_item(i['value'][1]) for i in item}
+            _type = item['type']
+            if _type == 'Any' and 'value' not in item:
                 return
             else:
                 value = item['value']
-            if type == 'Integer':
+            if _type == 'Integer':
                 return int(value)
-            elif type == 'Boolean':
+            elif _type == 'Boolean':
                 return value
-            elif type == 'ByteString':
+            elif _type == 'ByteString':
                 try:
                     return base64.b64decode(value).decode()
                 except UnicodeDecodeError as e:
                     # may be an N3 address starting with 'N'
                     # TODO: decode to N3 address
                     return value
-            elif type == 'Array':
+            elif _type == 'Array':
                 return [parse_single_item(i) for i in value]
-            elif type == 'Map':
+            elif _type == 'Map':
                 return {parse_single_item(i['key']): parse_single_item(i['value']) for i in value}
             else:
-                raise ValueError(f'Unknown type {type}')
+                raise ValueError(f'Unknown type {_type}')
         
         result: Dict = raw_result['result']
         if type(result) is not dict or 'stack' not in result:
