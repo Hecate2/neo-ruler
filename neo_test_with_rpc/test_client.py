@@ -226,6 +226,10 @@ class TestClient:
                     'type': 'Array',
                     'value': [parse_params(param_) for param_ in param]
                 }
+            elif type_param is type(None):
+                return {
+                    'type': 'Any',
+                }
             raise ValueError(f'Unable to handle param {param} with type {type_param}')
         
         if not params:
