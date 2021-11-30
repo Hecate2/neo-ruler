@@ -169,7 +169,7 @@ class TestClient:
     
     def invokefunction_of_any_contract(self, scripthash: Hash160Str, operation: str,
                                        params: List[Union[str, int, Hash160Str, UInt160]] = None,
-                                       signers: List[Signer] = None, relay=True, do_not_raise_on_result=False) -> dict:
+                                       signers: List[Signer] = None, relay=True, do_not_raise_on_result=False) -> Any:
         if self.with_print:
             print(f'invoke function {operation}')
         
@@ -248,11 +248,11 @@ class TestClient:
         return result
     
     def invokefunction(self, operation: str, params: List[Union[str, int, Hash160Str, UInt160]] = None,
-                       signers: List[Signer] = None, relay=True, do_not_raise_on_result=False) -> dict:
+                       signers: List[Signer] = None, relay=True, do_not_raise_on_result=False) -> Any:
         return self.invokefunction_of_any_contract(self.contract_scripthash, operation, params,
                                                    signers, relay=relay, do_not_raise_on_result=do_not_raise_on_result)
     
-    def invokescript(self, script: Union[str, bytes], signers: List[Signer] = None, relay=False) -> dict:
+    def invokescript(self, script: Union[str, bytes], signers: List[Signer] = None, relay=False) -> Any:
         if type(script) is bytes:
             script: str = script.decode()
         if not signers:
