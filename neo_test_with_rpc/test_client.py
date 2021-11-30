@@ -145,12 +145,13 @@ class TestClient:
             elif _type == 'Boolean':
                 return value
             elif _type == 'ByteString':
+                byte_value = base64.b64decode(value)
                 try:
-                    return base64.b64decode(value).decode()
+                    return byte_value.decode()
                 except UnicodeDecodeError as e:
                     # may be an N3 address starting with 'N'
                     # TODO: decode to N3 address
-                    return value
+                    return byte_value
             elif _type == 'Array':
                 return [parse_single_item(i) for i in value]
             elif _type == 'Map':
