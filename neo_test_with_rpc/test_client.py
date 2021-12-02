@@ -166,13 +166,14 @@ class TestClient:
             return result['stack']
         result: List = result['stack'][0]
         return parse_single_item(result)
-    
+
     def invokefunction_of_any_contract(self, scripthash: Hash160Str, operation: str,
                                        params: List[Union[str, int, Hash160Str, UInt160]] = None,
-                                       signers: List[Signer] = None, relay=True, do_not_raise_on_result=False) -> Any:
-        if self.with_print:
+                                       signers: List[Signer] = None, relay=True, do_not_raise_on_result=False,
+                                       with_print=True) -> Any:
+        if self.with_print and with_print:
             print(f'invoke function {operation}')
-        
+    
         def parse_params(param: Union[str, int, Hash160Str, UInt160, bytes]) -> Dict[str, str]:
             type_param = type(param)
             if type_param is UInt160:
@@ -246,12 +247,13 @@ class TestClient:
         result = self.meta_rpc_method('invokefunction', parameters, relay=relay,
                                       do_not_raise_on_result=do_not_raise_on_result)
         return result
-    
+
     def invokefunction(self, operation: str, params: List[Union[str, int, Hash160Str, UInt160]] = None,
-                       signers: List[Signer] = None, relay=True, do_not_raise_on_result=False) -> Any:
+                       signers: List[Signer] = None, relay=True, do_not_raise_on_result=False, with_print=True) -> Any:
         return self.invokefunction_of_any_contract(self.contract_scripthash, operation, params,
-                                                   signers, relay=relay, do_not_raise_on_result=do_not_raise_on_result)
-    
+                                                   signers, relay=relay, do_not_raise_on_result=do_not_raise_on_result,
+                                                   with_print=with_print)
+
     def invokescript(self, script: Union[str, bytes], signers: List[Signer] = None, relay=False) -> Any:
         if type(script) is bytes:
             script: str = script.decode()
