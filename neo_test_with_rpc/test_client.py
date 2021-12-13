@@ -80,7 +80,7 @@ class TestClient:
         if 'error' in result:
             raise ValueError(result['error']['message'])
         if type(result['result']) is dict:
-            if 'exception' in result['result'] and result['result']['exception'] != None:
+            if 'exception' in result['result'] and result['result']['exception'] is not None:
                 if do_not_raise_on_result:
                     return result['result']['exception']
                 else:
