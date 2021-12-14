@@ -121,7 +121,7 @@ class TestClient:
             open_wallet_result, _, _ = self.meta_rpc_method("openwallet", [path, password])
         else:
             open_wallet_result = self.meta_rpc_method("openwallet", [path, password])
-        if open_wallet_result != True:
+        if not open_wallet_result:
             raise ValueError(f'Failed to open wallet {path} with given password.')
         return open_wallet_result
     
@@ -148,7 +148,7 @@ class TestClient:
                 byte_value = base64.b64decode(value)
                 try:
                     return byte_value.decode()
-                except UnicodeDecodeError as e:
+                except UnicodeDecodeError:
                     # may be an N3 address starting with 'N'
                     # TODO: decode to N3 address
                     return byte_value
@@ -174,7 +174,7 @@ class TestClient:
         if self.with_print and with_print:
             print(f'invoke function {operation}')
     
-        def parse_params(param: Union[str, int, Hash160Str, UInt160, bytes]) -> Dict[str, str]:
+        def parse_params(param: Union[str, int, Hash160Str, UInt160, UInt256, bytes]) -> Dict[str, str]:
             type_param = type(param)
             if type_param is UInt160:
                 return {
@@ -228,7 +228,7 @@ class TestClient:
                     'type': 'Array',
                     'value': [parse_params(param_) for param_ in param]
                 }
-            elif type_param is type(None):
+            elif param is None:
                 return {
                     'type': 'Any',
                 }
