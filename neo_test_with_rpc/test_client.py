@@ -291,10 +291,10 @@ class TestClient:
         ])
     
     def send_neo_to_address(self, to_address: Hash160Str, value: int):
-        return self.sendtoaddress(Hash160Str.from_UInt160(NeoToken().hash), to_address, value)
+        return self.sendtoaddress(Hash160Str.from_UInt160(neo.hash), to_address, value)
     
     def send_gas_to_address(self, to_address: Hash160Str, value: int):
-        return self.sendtoaddress(Hash160Str.from_UInt160(GasToken().hash), to_address, value)
+        return self.sendtoaddress(Hash160Str.from_UInt160(gas.hash), to_address, value)
     
     def getwalletbalance(self, asset_id: Hash160Str) -> int:
         return int(self.meta_rpc_method('getwalletbalance', [asset_id.to_str()])['balance'])
