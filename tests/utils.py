@@ -60,7 +60,7 @@ class Hash256Str(HashStr):
 
     @classmethod
     def zero(cls):
-        return cls.from_UInt256(UInt256.zero())
+        return cls(UInt256.zero())
 
     def to_UInt256(self):
         return UInt256.from_string(self.string[2:])
@@ -91,7 +91,7 @@ class Hash160Str(HashStr):
 
     @classmethod
     def zero(cls):
-        return cls.from_UInt160(UInt160.zero())
+        return cls(UInt160.zero())
 
     def to_UInt160(self):
         return UInt160.from_string(self.string[2:])
