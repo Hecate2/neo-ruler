@@ -40,8 +40,12 @@ class Hash256Str(HashStr):
     0x59916d8c2fc5feb06b77aec289ac34b49ae3bccb1f88fe64ea5172c79fc1af05
     """
 
-    def __init__(self, string: str):
+    def __init__(self, string: Union[str, UInt256]):
         # assert string.startswith('0x')
+        if type(string) is UInt256:
+            string = bytearray(string._data)
+            string.reverse()
+            string = string.hex()
         if len(string) == 64:
             string = '0x' + string
         assert len(string) == 66
@@ -67,8 +71,12 @@ class Hash160Str(HashStr):
     0xf61eebf573ea36593fd43aa150c055ad7906ab83
     """
     
-    def __init__(self, string: str):
+    def __init__(self, string: Union[str, UInt160]):
         # assert string.startswith('0x')
+        if type(string) is UInt160:
+            string = bytearray(string._data)
+            string.reverse()
+            string = string.hex()
         if len(string) == 40:
             string = '0x' + string
         assert len(string) == 42
