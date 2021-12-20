@@ -87,9 +87,13 @@ class TestClient:
                     print(post_data)
                     print(result)
                     raise ValueError(result['result']['exception'])
-            if relay and 'tx' in result['result']:
-                tx = result['result']['tx']
-                self.sendrawtransaction(tx)
+            if relay:
+                if method in {'invokefunction', 'invokescript'} and 'tx' not in result['result']:
+                    raise ValueError('No `tx` in response. '
+                                     'Did you call `client.openwallet()` before `invokefunction`?')
+                if 'tx' in result['result']:
+                    tx = result['result']['tx']
+                    self.sendrawtransaction(tx)
         self.previous_raw_result = result
         self.previous_result = self.parse_raw_result(result)
         if self.verbose_return:
