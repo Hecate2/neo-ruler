@@ -1,3 +1,4 @@
+import string
 import json
 import os
 from functools import partial
@@ -126,7 +127,7 @@ class TestEngine:
         if type_param is Hash256Str:
             return param.to_UInt256().to_array()
         elif type_param is str:
-            hex_alphabet = set('0123456789abcdef')
+            hex_alphabet = set(string.hexdigits)
             # WARNING: a dangerous guess here
             if len(param) == 40 and set(param).issubset(hex_alphabet):
                 return types.UInt160.from_string(param).to_array()
