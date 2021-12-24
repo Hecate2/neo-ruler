@@ -158,6 +158,8 @@ class TestClient:
                     return byte_value
             elif _type == 'Array':
                 return [parse_single_item(i) for i in value]
+            elif _type == 'Struct':
+                return tuple([parse_single_item(i) for i in value])
             elif _type == 'Map':
                 return {parse_single_item(i['key']): parse_single_item(i['value']) for i in value}
             else:
