@@ -136,7 +136,7 @@ class TestEngine:
                 return param
         elif type_param is UInt160:
             return param.to_array()
-        elif type_param is int or type_param is bytes or type_param is type(None):
+        elif type_param is int or type_param is bytes or type_param is bool or param is None:
             return param
         else:
             raise ValueError(f'Unable to handle param {param} with type {type_param}')
