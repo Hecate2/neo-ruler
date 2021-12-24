@@ -79,6 +79,7 @@ class TestEngine:
         self.raw_nef, self.raw_manifest = self.read_raw_nef_and_raw_manifest(nef_path, manifest_path)
         self.nef, self.manifest = self.build_nef_and_manifest_from_raw(self.raw_nef, self.raw_manifest)
         self.previous_engine: ApplicationEngine = self.new_engine()
+        self.previous_processed_result = None
         self.contract = contracts.ContractState(0, self.nef, self.manifest, 0,
                                                 types.UInt160.deserialize_from_bytes(self.raw_nef))
         self.next_contract_id = 1  # if you deploy more contracts in a same engine, the contracts must have different id
@@ -102,7 +103,6 @@ class TestEngine:
             setattr(self, method_name, partial_function)
             partial_function_with_print = partial(self.invoke_method_with_print, method_name)
             setattr(self, method_name_with_print, partial_function_with_print)
-        self.previous_processed_result = None
     
     def deploy_another_contract(self, nef_path: str, manifest_path: str = '') -> UInt160:
         """
@@ -142,7 +142,7 @@ class TestEngine:
             raise ValueError(f'Unable to handle param {param} with type {type_param}')
     
     @staticmethod
-    def signer_auto_checker(signer: Union[str, UInt160, payloads.Signer], scope: payloads.WitnessScope) -> payloads.Signer:
+    def signer_auto_checker(signer: Union[str, UInt160, Hash160Str, payloads.Signer], scope: payloads.WitnessScope) -> payloads.Signer:
         type_signer = type(signer)
         if type_signer is str and len(signer) == 40:
             return payloads.Signer(types.UInt160.from_string(signer), scope)
@@ -150,6 +150,8 @@ class TestEngine:
             return signer
         elif type_signer is UInt160:
             return payloads.Signer(signer, scope)
+        elif type_signer is Hash160Str:
+            return payloads.Signer(signer.to_UInt160(), scope)
         else:
             raise ValueError(f'Unable to handle signer {signer} with type {type_signer}')
 
