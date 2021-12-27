@@ -153,6 +153,14 @@ class TestClient:
                 try:
                     return byte_value.decode()
                 except UnicodeDecodeError:
+                    try:
+                        len_bytes = len(byte_value)
+                        if len_bytes == 20:
+                            return Hash160Str.from_UInt160(UInt160(byte_value))
+                        if len_bytes == 32:
+                            return Hash256Str.from_UInt256(UInt256(byte_value))
+                    except Exception:
+                        pass
                     # may be an N3 address starting with 'N'
                     # TODO: decode to N3 address
                     return byte_value
