@@ -215,6 +215,11 @@ class TestClient:
                     'type': 'PublicKey',
                     'value': str(param),
                 }
+            elif type_param is bool:
+                return {
+                    'type': 'Boolean',
+                    'value': param,
+                }
             elif type_param is int:
                 return {
                     'type': 'Integer',
