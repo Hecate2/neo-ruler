@@ -34,6 +34,9 @@ class HashStr(str):
             return self.string != other.string
         return True
 
+    def __hash__(self):
+        return hash(self.string)
+
 
 class Hash256Str(HashStr):
     """
