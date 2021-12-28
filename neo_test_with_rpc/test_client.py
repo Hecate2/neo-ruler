@@ -148,7 +148,7 @@ class TestClient:
                 return int(value)
             elif _type == 'Boolean':
                 return value
-            elif _type == 'ByteString':
+            elif _type == 'ByteString' or _type == 'Buffer':
                 byte_value = base64.b64decode(value)
                 try:
                     return byte_value.decode()
@@ -170,6 +170,8 @@ class TestClient:
                 return tuple([parse_single_item(i) for i in value])
             elif _type == 'Map':
                 return {parse_single_item(i['key']): parse_single_item(i['value']) for i in value}
+            elif _type == 'Pointer':
+                return int(value)
             else:
                 raise ValueError(f'Unknown type {_type}')
         
