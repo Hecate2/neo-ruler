@@ -141,7 +141,7 @@ class TestClient:
                         return {parse_single_item(i['value'][0]): parse_single_item(i['value'][1]) for i in item}
             _type = item['type']
             if _type == 'Any' and 'value' not in item:
-                return
+                return None
             else:
                 value = item['value']
             if _type == 'Integer':
@@ -184,13 +184,13 @@ class TestClient:
         return parse_single_item(result)
 
     def invokefunction_of_any_contract(self, scripthash: Hash160Str, operation: str,
-                                       params: List[Union[str, int, Hash160Str, UInt160]] = None,
+                                       params: List[Union[str, int, dict, Hash160Str, UInt160]] = None,
                                        signers: List[Signer] = None, relay=True, do_not_raise_on_result=False,
                                        with_print=True) -> Any:
         if self.with_print and with_print:
             print(f'invoke function {operation}')
     
-        def parse_params(param: Union[str, int, Hash160Str, UInt160, UInt256, bytes]) -> Dict[str, str]:
+        def parse_params(param: Union[str, int, dict, Hash160Str, UInt160, UInt256, bytes]) -> Dict[str, str]:
             type_param = type(param)
             if type_param is UInt160:
                 return {
@@ -248,6 +248,11 @@ class TestClient:
                 return {
                     'type': 'Array',
                     'value': [parse_params(param_) for param_ in param]
+                }
+            elif type_param is dict:
+                return {
+                    'type': 'Map',
+                    'value': [{'key': parse_params(k), 'value': parse_params(v)} for k, v in param.items()]
                 }
             elif param is None:
                 return {
