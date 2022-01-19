@@ -6,6 +6,7 @@ import time
 import datetime
 from math import ceil, log
 from neo3.core.types import UInt160, UInt256
+from neo3.wallet import Account
 
 
 class HashStr(str):
@@ -93,12 +94,19 @@ class Hash160Str(HashStr):
         return cls(hash160str)
 
     @classmethod
+    def from_address(cls, address: str):
+        return cls.from_UInt160(Account.address_to_script_hash(address))
+
+    @classmethod
     def zero(cls):
         return cls(UInt160.zero())
 
     def to_UInt160(self):
         return UInt160.from_string(self.string[2:])
     
+    def to_address(self):
+        return Account.script_hash_to_address(self.to_UInt160())
+
 
 class PublicKeyStr(HashStr):
     """
