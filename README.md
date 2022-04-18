@@ -1,5 +1,7 @@
 Python 3.8 is recommended for this project.
 
+Alternative refactored general-purpose test suite: https://github.com/Hecate2/neo-test-client .
+
 #### Intro
 
 `ruler.py` allows everyone to borrow paired token by paying a sum of collateral token. 
